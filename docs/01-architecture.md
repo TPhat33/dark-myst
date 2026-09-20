@@ -25,6 +25,7 @@ flowchart TD
 | ตัวเกม | Unity 2022.3 LTS + C# | หน้าจอ การควบคุม ภาพ เสียง แอนิเมชัน |
 | กฎการต่อสู้ | `DarkMyst.Combat` (netstandard2.1, ไม่มี dependency) | คำนวณผลและสร้างลำดับเหตุการณ์ |
 | ข้อมูลและการปั้น | `DarkMyst.Content` (netstandard2.1 + Newtonsoft) | โหลด content pack, สูตรเลเวล/evolve |
+| การสำรวจ (ฟาร์ม) | `DarkMyst.Expedition` (netstandard2.1 + Newtonsoft) | สร้างแผนที่จุดเชื่อมจาก seed, เดินด่านทีละจุด, เรียก `DarkMyst.Combat` ต่อการต่อสู้แต่ละจุด |
 | ระบบหลังบ้าน | ASP.NET Core | บัญชี การสำรวจ evolve รางวัล ร้านค้า |
 | ฐานข้อมูล | PostgreSQL | ข้อมูลถาวรและธุรกรรม |
 | ไฟล์เนื้อหา | Object storage + CDN | ภาพ เสียง และ content pack แต่ละเวอร์ชัน |
@@ -40,8 +41,9 @@ flowchart TD
 DarkMyst.sln
 src/DarkMyst.Combat/      กฎการต่อสู้ — ไม่มี dependency, ไม่รู้จัก Unity
 src/DarkMyst.Content/     content pack, สูตรเลเวลและ evolve
-tests/                    เทสต์ของกฎทั้งหมด (75 เคส)
-tools/DarkMyst.SimRunner/ CLI: validate / battle / sweep
+src/DarkMyst.Expedition/  ระบบสำรวจ (ฟาร์ม) — ต่อยอด Combat + Content, ไม่รู้จัก Unity
+tests/                    เทสต์ของกฎทั้งหมด (120 เคส)
+tools/DarkMyst.SimRunner/ CLI: validate / battle / sweep / expedition
 tools/build-unity-plugins.sh
 content/                  ข้อมูลเกมทั้งหมดเป็น JSON — แหล่งความจริงชุดเดียว
 unity/DarkMyst/           โปรเจกต์ Unity
@@ -72,7 +74,17 @@ docs/                     เอกสารชุดนี้
 ## กฎที่ห้ามแหก
 
 1. `DarkMyst.Combat` **ห้ามอ้างอิง Unity, ห้ามอ้างอิง NuGet ใด ๆ** และห้ามใช้เลขทศนิยม
-2. `DarkMyst.Combat` **ห้ามใช้ `System.Random`** — ใช้ `DeterministicRandom` เท่านั้น
+   `DarkMyst.Expedition` ต่อยอดจาก `DarkMyst.Combat` และ `DarkMyst.Content` ได้ (จึงมี
+   Newtonsoft ติดมาเหมือน Content) แต่ **ห้ามอ้างอิง Unity และห้ามใช้เลขทศนิยมเช่นเดียวกัน**
+   — แผนที่สำรวจ รางวัล และการสุ่มทุกจุดเป็นเลขจำนวนเต็มล้วน (อัตราส่วนเก็บเป็น per-mille)
+   ตลอดทั้งไลบรารี ไม่มีข้อยกเว้น
+2. **ห้ามใช้ `System.Random`** ไม่ว่าจะใน `DarkMyst.Combat` หรือ `DarkMyst.Expedition` —
+   ใช้ `DeterministicRandom` เท่านั้น การสำรวจหนึ่งรันมีหลายสตรีมของมัน (สร้างแผนที่,
+   ต่อสู้ต่อจุด, สุ่มรางวัล/เหตุการณ์ต่อจุด) แต่ทุกสตรีมย้อนไปเป็น `DeterministicRandom`
+   เสมอ ไม่มีสตรีมไหนใช้ `string.GetHashCode()` แทน เพราะ .NET สุ่มค่านั้นใหม่ทุกโปรเซส
+   (ดู [09-expedition-spec.md](09-expedition-spec.md) หัวข้อ seed)
 3. ผลการต่อสู้ที่จ่ายรางวัลจริงต้องมาจากเซิร์ฟเวอร์เสมอ ไคลเอนต์แค่เล่นซ้ำ log
+   กฎเดียวกันนี้ใช้กับผลของการสำรวจทั้งรัน ไม่ใช่แค่การต่อสู้แยกจุด
 4. ทุกครั้งที่แก้ `CombatRules` ต้องขึ้น `CombatRules.Version`
-5. ทุกครั้งที่แก้ `content/` ต้องขึ้น `contentVersion` ใน `manifest.json`
+5. ทุกครั้งที่แก้ `content/` (รวมถึง `stages.json`, ตารางรางวัล และเหตุการณ์) ต้องขึ้น
+   `contentVersion` ใน `manifest.json`

@@ -58,7 +58,9 @@ namespace DarkMyst.SimRunner
                     Console.WriteLine(
                         "Content " + pack.Version + " is valid for rules " + CombatRules.Version + ": "
                         + pack.Characters.Count + " characters, " + pack.Enemies.Count + " enemies, "
-                        + pack.Encounters.Count + " encounters, " + pack.Skills.Count + " skills.");
+                        + pack.Encounters.Count + " encounters, " + pack.Skills.Count + " skills, "
+                        + pack.Stages.Count + " expedition stages, " + pack.RewardTables.Count + " reward tables, "
+                        + pack.Events.Count + " events.");
                     return 0;
 
                 case "battle":

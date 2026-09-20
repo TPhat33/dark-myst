@@ -31,7 +31,13 @@ namespace DarkMyst.Content.Tests
                   ""trigger"": ""OnBattleStart"",
                   ""effects"": [ { ""kind"": ""StatModifier"", ""target"": ""AllAllies"",
                                     ""statusId"": ""st_z"", ""modifiedStat"": ""Defense"",
-                                    ""amountPerMille"": 100, ""durationRounds"": 99 } ] }
+                                    ""amountPerMille"": 100, ""durationRounds"": 99 } ] },
+                { ""id"": ""skl_test_stacking_buff"", ""name"": ""Stacking buff"",
+                  ""trigger"": ""OnBattleStart"",
+                  ""effects"": [ { ""kind"": ""StatModifier"", ""target"": ""AllAllies"",
+                                    ""statusId"": ""st_stack"", ""modifiedStat"": ""Defense"",
+                                    ""amountPerMille"": 100, ""durationRounds"": 99,
+                                    ""maxStacks"": 5, ""stackRule"": ""Stack"" } ] }
             ]
         }";
 
@@ -320,6 +326,13 @@ namespace DarkMyst.Content.Tests
         {
             ContentException error = LoadInvalid(EventStage("skl_test_leader_buff"));
             Assert.Contains("leader skill", error.Message);
+        }
+
+        [Fact]
+        public void A_buff_grant_whose_effect_stacks_is_rejected()
+        {
+            ContentException error = LoadInvalid(EventStage("skl_test_stacking_buff"));
+            Assert.Contains("stackRule Stack", error.Message);
         }
 
         [Fact]

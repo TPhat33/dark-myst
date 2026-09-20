@@ -12,11 +12,12 @@ namespace DarkMyst.Content.Tests
         {
             ContentPack pack = ShippedContent.Instance;
 
-            Assert.Equal("0.1.0", pack.Version);
+            Assert.Equal("0.2.0", pack.Version);
             Assert.Equal(CombatRules.Version, pack.Manifest.RulesVersion);
             Assert.NotEmpty(pack.Characters);
             Assert.NotEmpty(pack.Enemies);
             Assert.NotEmpty(pack.Encounters);
+            Assert.NotEmpty(pack.Stages);
         }
 
         [Fact]
@@ -176,7 +177,7 @@ namespace DarkMyst.Content.Tests
                 OwnerId = "player_1",
                 CharacterId = characterId,
                 Level = level,
-                ContentVersion = "0.1.0"
+                ContentVersion = "0.2.0"
             });
         }
     }

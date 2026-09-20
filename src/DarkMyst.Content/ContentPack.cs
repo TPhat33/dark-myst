@@ -622,6 +622,20 @@ namespace DarkMyst.Content
                     + "' as a run buff, but it is a leader skill: it would stop applying the moment the "
                     + "unit holding it is not in the leader slot, or is downed.");
             }
+
+            foreach (SkillEffect effect in skill.Effects)
+            {
+                if (effect.StackRule == StackRule.Stack || effect.StackRule == StackRule.Independent)
+                {
+                    problems.Add(
+                        "Event '" + eventId + "' grants skill '" + skillId + "' as a run buff, but one of its "
+                        + "effects uses stackRule " + effect.StackRule + ". A run buff is injected into every "
+                        + "unit's own skill list (so it still applies if whichever unit picked it up goes down), "
+                        + "which means up to five units fire its OnBattleStart independently in the same battle: "
+                        + "Stack or Independent would let it stack five times over on a single team instead of "
+                        + "applying once. Use Refresh or Ignore instead.");
+                }
+            }
         }
 
         private void ValidateStages(List<string> problems)
