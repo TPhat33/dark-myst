@@ -39,3 +39,14 @@ jobs:
               sweep --encounter "$encounter" --repeat 200
             echo
           done
+
+      # Same reasoning as the battle sweep above, one layer up: a content change that quietly
+      # makes an expedition stage unwinnable (or trivial) at its recommended level should show
+      # up here, not in a player's farming session.
+      - name: Expedition sweep
+        run: |
+          for level in 4 12 20; do
+            dotnet run --project tools/DarkMyst.SimRunner -c Release --no-build -- \
+              expedition --stage stg_ashfields --repeat 200 --level "$level"
+            echo
+          done

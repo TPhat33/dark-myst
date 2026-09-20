@@ -23,6 +23,15 @@ namespace DarkMyst.Combat.Model
 
         public StatBlock Stats { get; set; }
 
+        /// <summary>
+        /// HP the unit enters the battle with. Null means full <see cref="StatBlock.MaxHp"/>,
+        /// which is every caller before the expedition system: a plain encounter always starts
+        /// fresh. A value of 0 starts the unit already downed (see
+        /// <c>docs/09-expedition-spec.md</c> for why an expedition run wants this — HP carried
+        /// over from an earlier node in the same run).
+        /// </summary>
+        public int? StartingHp { get; set; }
+
         public List<SkillDefinition> Skills { get; set; } = new List<SkillDefinition>();
     }
 

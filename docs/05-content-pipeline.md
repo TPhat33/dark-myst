@@ -27,6 +27,7 @@ content/
   enemies.json        ศัตรู
   encounters.json     การจัดวางศัตรูเป็นด่าน
   progression.json    เพดานเลเวล กฎ evolve แนวทางเน้นสแตท
+  stages.json         ด่านสำรวจ (ฟาร์ม): แผนที่, ตารางรางวัล, เหตุการณ์ — ดู 09-expedition-spec.md
 ```
 
 `content/` คือ **แหล่งความจริงชุดเดียว** สำเนาใน `unity/.../StreamingAssets/content/`

@@ -467,6 +467,38 @@
       ]
     },
     {
+      "id": "skl_relic_ember_ward",
+      "name": "Ember Ward Charm",
+      "trigger": "OnBattleStart",
+      "effects": [
+        {
+          "kind": "StatModifier",
+          "target": "AllAllies",
+          "statusId": "st_relic_ember_ward",
+          "modifiedStat": "Defense",
+          "amountPerMille": 180,
+          "durationRounds": 99,
+          "stackRule": "Ignore"
+        }
+      ]
+    },
+    {
+      "id": "skl_relic_swift_charm",
+      "name": "Swift Charm",
+      "trigger": "OnBattleStart",
+      "effects": [
+        {
+          "kind": "StatModifier",
+          "target": "AllAllies",
+          "statusId": "st_relic_swift_charm",
+          "modifiedStat": "Attack",
+          "amountPerMille": 150,
+          "durationRounds": 99,
+          "stackRule": "Ignore"
+        }
+      ]
+    },
+    {
       "id": "skl_acolyte_chant",
       "name": "Crypt Chant",
       "trigger": "OnAction",

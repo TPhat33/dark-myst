@@ -778,6 +778,88 @@ namespace DarkMyst.Combat.Tests
         }
 
         // ------------------------------------------------------------------
+        // Starting HP (used by the expedition system to carry HP between nodes)
+        // ------------------------------------------------------------------
+
+        [Fact]
+        public void A_unit_with_no_starting_hp_set_enters_at_full_health()
+        {
+            var attacker = TestUnits.Team(
+                "a", TestUnits.Unit("a0", 0, TestUnits.Stats(maxHp: 500, speed: 200), new[] { TestUnits.Idle() }));
+            var defender = TestUnits.Team(
+                "d", TestUnits.Unit("d0", 0, TestUnits.Stats(maxHp: 1), new[] { TestUnits.Idle() }));
+
+            BattleResult result = BattleSimulator.Run(TestUnits.Battle(attacker, defender, rules: NoVariance()));
+
+            UnitSnapshot snapshot = result.FinalUnits.Find(u => u.InstanceId == "a0");
+            Assert.Equal(500, snapshot.MaxHp);
+        }
+
+        [Fact]
+        public void A_partial_starting_hp_carries_straight_into_the_battle()
+        {
+            var attacker = TestUnits.Team(
+                "a", TestUnits.Unit("a0", 0, TestUnits.Stats(maxHp: 500, speed: 1), new[] { TestUnits.Idle() }));
+            attacker.Units[0].StartingHp = 120;
+
+            var defender = TestUnits.Team(
+                "d", TestUnits.Unit("d0", 0, TestUnits.Stats(maxHp: 99999, speed: 200)));
+
+            BattleResult result = BattleSimulator.Run(TestUnits.Battle(attacker, defender, rules: NoVariance()));
+
+            // The defender's first strike is logged against a unit that started on 120, not 500.
+            BattleEvent firstHit = TestUnits.EventsOfKind(result, BattleEventKind.Damaged)[0];
+            Assert.Equal(120 - firstHit.Amount, firstHit.TargetHpAfter);
+        }
+
+        [Fact]
+        public void A_starting_hp_of_zero_enters_the_battle_already_downed()
+        {
+            var attacker = TestUnits.Team(
+                "a", TestUnits.Unit("a0", 0, TestUnits.Stats(maxHp: 500, speed: 200), new[] { TestUnits.Idle() }));
+            attacker.Units[0].StartingHp = 0;
+
+            var defender = TestUnits.Team(
+                "d", TestUnits.Unit("d0", 0, TestUnits.Stats(maxHp: 300), new[] { TestUnits.Idle() }));
+
+            BattleResult result = BattleSimulator.Run(TestUnits.Battle(attacker, defender, rules: NoVariance()));
+
+            // Wiped before the first round even started: the defender wins outright.
+            Assert.Equal(BattleOutcome.DefenderVictory, result.Outcome);
+            Assert.Equal(BattleEndReason.AttackerWiped, result.EndReason);
+        }
+
+        [Fact]
+        public void A_starting_hp_above_max_hp_is_clamped_down_rather_than_overhealing()
+        {
+            var attacker = TestUnits.Team(
+                "a", TestUnits.Unit("a0", 0, TestUnits.Stats(maxHp: 500, speed: 200), new[] { TestUnits.Idle() }));
+            attacker.Units[0].StartingHp = 99999;
+
+            var defender = TestUnits.Team(
+                "d", TestUnits.Unit("d0", 0, TestUnits.Stats(maxHp: 1), new[] { TestUnits.Idle() }));
+
+            BattleResult result = BattleSimulator.Run(TestUnits.Battle(attacker, defender, rules: NoVariance()));
+
+            Assert.Equal(500, result.FinalUnits.Find(u => u.InstanceId == "a0").MaxHp);
+        }
+
+        [Fact]
+        public void A_negative_starting_hp_is_rejected()
+        {
+            var attacker = TestUnits.Team(
+                "a", TestUnits.Unit("a0", 0, TestUnits.Stats()));
+            attacker.Units[0].StartingHp = -1;
+
+            var defender = TestUnits.Team("d", TestUnits.Unit("d0", 0, TestUnits.Stats()));
+
+            ArgumentException error = Assert.Throws<ArgumentException>(
+                () => BattleSimulator.Run(TestUnits.Battle(attacker, defender)));
+
+            Assert.Contains("negative starting HP", error.Message);
+        }
+
+        // ------------------------------------------------------------------
         // Leader skills
         // ------------------------------------------------------------------
 

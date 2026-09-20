@@ -9,7 +9,7 @@
 ## เริ่มต้น
 
 ```bash
-dotnet test                                              # กฎเกมทั้งหมด (75 เคส)
+dotnet test                                              # กฎเกมทั้งหมด (120 เคส)
 dotnet run --project tools/DarkMyst.SimRunner -- validate # ตรวจ content pack
 ./tools/build-unity-plugins.sh                            # เตรียมโปรเจกต์ Unity
 ```
@@ -31,6 +31,14 @@ dotnet run --project tools/DarkMyst.SimRunner -- sweep \
 dotnet run --project tools/DarkMyst.SimRunner -- sweep \
   --encounter enc_boss_ashen_revenant --repeat 300 --level 12 \
   --roster chr_ashen_knight_i,chr_grave_warden_i,chr_thorn_maiden_i,chr_mire_hexer_i,chr_pale_stalker_i
+
+# ลองการสำรวจ (farm) หนึ่งรอบ ดูทุกจุดที่เจอ
+dotnet run --project tools/DarkMyst.SimRunner -- expedition \
+  --stage stg_ashfields --seed 20260920
+
+# วัดสมดุลการสำรวจ: อัตราจบด่านและรางวัลเฉลี่ยจาก 300 seed
+dotnet run --project tools/DarkMyst.SimRunner -- expedition \
+  --stage stg_ashfields --repeat 300 --level 12
 ```
 
 ทีมสุดท้ายไม่มีตัวฮีล อัตราชนะ 0% — การจัดทีมมีผลจริง ไม่ใช่แค่ความรู้สึก
@@ -40,8 +48,9 @@ dotnet run --project tools/DarkMyst.SimRunner -- sweep \
 ```
 src/DarkMyst.Combat/       กฎการต่อสู้ — ไม่มี dependency, ไม่รู้จัก Unity, เลขจำนวนเต็มล้วน
 src/DarkMyst.Content/      content pack, สูตรเลเวลและ evolve
+src/DarkMyst.Expedition/   ระบบสำรวจ (ฟาร์ม) — แผนที่จุดเชื่อม บัฟเฉพาะรอบ ต่อยอดจากทั้งสองข้างบน
 tests/                     เทสต์ของกฎทั้งหมด
-tools/DarkMyst.SimRunner/  CLI: validate / battle / sweep
+tools/DarkMyst.SimRunner/  CLI: validate / battle / sweep / expedition
 content/                   ข้อมูลเกมทั้งหมดเป็น JSON — แหล่งความจริงชุดเดียว
 unity/DarkMyst/            โปรเจกต์ Unity (2022.3 LTS)
 docs/                      เอกสารออกแบบ
@@ -77,6 +86,7 @@ docs/                      เอกสารออกแบบ
 | [06 Roadmap](docs/06-roadmap.md) | ระยะ A–F และเกณฑ์ผ่าน |
 | [07 แผนทดสอบ](docs/07-testing-plan.md) | สิ่งที่ต้องพิสูจน์ และตัวเลขที่วัดได้แล้ว |
 | [08 ตัวชี้วัด](docs/08-metrics.md) | เหตุการณ์ที่ต้องเก็บและเหตุผล |
+| [09 ระบบสำรวจ](docs/09-expedition-spec.md) | แผนที่จุดเชื่อม การสุ่มที่ตรวจสอบได้ บัฟเฉพาะรอบ |
 
 ## ขั้นถัดไป
 

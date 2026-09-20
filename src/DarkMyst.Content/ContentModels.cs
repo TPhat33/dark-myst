@@ -211,5 +211,8 @@ namespace DarkMyst.Content
         public string Enemies { get; set; } = "enemies.json";
         public string Progression { get; set; } = "progression.json";
         public string Encounters { get; set; } = "encounters.json";
+
+        /// <summary>Expedition stages, reward tables and events. See <c>docs/09-expedition-spec.md</c>.</summary>
+        public string Stages { get; set; } = "stages.json";
     }
 }

@@ -104,6 +104,12 @@ namespace DarkMyst.Combat
                         name + ": unit '" + unit.InstanceId + "' has no HP.", name);
                 }
 
+                if (unit.StartingHp.HasValue && unit.StartingHp.Value < 0)
+                {
+                    throw new ArgumentException(
+                        name + ": unit '" + unit.InstanceId + "' has a negative starting HP.", name);
+                }
+
                 if (!HasUsableTurnAction(unit))
                 {
                     throw new ArgumentException(
@@ -154,14 +160,23 @@ namespace DarkMyst.Combat
 
             foreach (UnitDefinition definition in ordered)
             {
+                // Most callers never set StartingHp, so they get the pre-expedition behaviour
+                // of always entering at full HP. A run that carries HP between nodes sets it
+                // explicitly instead of the engine guessing at "current HP" from anywhere else.
+                int startingHp = definition.StartingHp ?? definition.Stats.MaxHp;
+                if (startingHp > definition.Stats.MaxHp)
+                {
+                    startingHp = definition.Stats.MaxHp;
+                }
+
                 var unit = new RuntimeUnit
                 {
                     Definition = definition,
                     Ref = new UnitRef(side, definition.Slot),
                     Row = Formation.RowOf(definition.Slot),
                     IsLeader = definition.Slot == team.LeaderSlot,
-                    Hp = definition.Stats.MaxHp,
-                    Alive = true
+                    Hp = startingHp,
+                    Alive = startingHp > 0
                 };
 
                 foreach (SkillDefinition skill in definition.Skills)

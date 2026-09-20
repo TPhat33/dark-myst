@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      netstandard2.1, same as DarkMyst.Combat and DarkMyst.Content: the expedition state machine
+      runs on the server and can be exercised from Unity for a local/offline farm loop without a
+      second implementation.
+    -->
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>DarkMyst.Expedition</AssemblyName>
+    <RootNamespace>DarkMyst.Expedition</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../DarkMyst.Combat/DarkMyst.Combat.csproj" />
+    <ProjectReference Include="../DarkMyst.Content/DarkMyst.Content.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Same dependency DarkMyst.Content already pulls in, for the same reason: a run's saved
+         state is JSON, serialized with DarkMyst.Content's own conventions (camelCase, string
+         enums), so the server can store and resume it exactly like a content pack. -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+</Project>

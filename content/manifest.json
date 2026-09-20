@@ -5,5 +5,6 @@
   "characters": "characters.json",
   "enemies": "enemies.json",
   "progression": "progression.json",
-  "encounters": "encounters.json"
+  "encounters": "encounters.json",
+  "stages": "stages.json"
 }

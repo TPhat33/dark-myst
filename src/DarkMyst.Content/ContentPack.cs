@@ -30,6 +30,9 @@ namespace DarkMyst.Content
         private readonly Dictionary<string, CharacterData> _characters;
         private readonly Dictionary<string, EnemyData> _enemies;
         private readonly Dictionary<string, EncounterData> _encounters;
+        private readonly Dictionary<string, StageData> _stages;
+        private readonly Dictionary<string, RewardTableData> _rewardTables;
+        private readonly Dictionary<string, EventData> _events;
 
         private ContentPack(
             ContentManifest manifest,
@@ -37,6 +40,9 @@ namespace DarkMyst.Content
             Dictionary<string, CharacterData> characters,
             Dictionary<string, EnemyData> enemies,
             Dictionary<string, EncounterData> encounters,
+            Dictionary<string, StageData> stages,
+            Dictionary<string, RewardTableData> rewardTables,
+            Dictionary<string, EventData> events,
             ProgressionData progression)
         {
             Manifest = manifest;
@@ -44,6 +50,9 @@ namespace DarkMyst.Content
             _characters = characters;
             _enemies = enemies;
             _encounters = encounters;
+            _stages = stages;
+            _rewardTables = rewardTables;
+            _events = events;
             Progression = progression;
         }
 
@@ -60,6 +69,12 @@ namespace DarkMyst.Content
         public IReadOnlyCollection<EncounterData> Encounters => _encounters.Values;
 
         public IReadOnlyCollection<SkillDefinition> Skills => _skills.Values;
+
+        public IReadOnlyCollection<StageData> Stages => _stages.Values;
+
+        public IReadOnlyCollection<RewardTableData> RewardTables => _rewardTables.Values;
+
+        public IReadOnlyCollection<EventData> Events => _events.Values;
 
         /// <summary>Serializer settings shared by the loader, the admin tool and the sim runner.</summary>
         public static JsonSerializerSettings SerializerSettings
@@ -171,9 +186,45 @@ namespace DarkMyst.Content
                 encounters.Add(encounter.Id, encounter);
             }
 
+            ExpeditionFile expeditionFile = ReadJson<ExpeditionFile>(manifest.Stages);
+
+            var rewardTables = new Dictionary<string, RewardTableData>(StringComparer.Ordinal);
+            foreach (RewardTableData table in expeditionFile.RewardTables)
+            {
+                if (rewardTables.ContainsKey(table.Id))
+                {
+                    throw new ContentException("Duplicate reward table id '" + table.Id + "'.");
+                }
+
+                rewardTables.Add(table.Id, table);
+            }
+
+            var events = new Dictionary<string, EventData>(StringComparer.Ordinal);
+            foreach (EventData evt in expeditionFile.Events)
+            {
+                if (events.ContainsKey(evt.Id))
+                {
+                    throw new ContentException("Duplicate event id '" + evt.Id + "'.");
+                }
+
+                events.Add(evt.Id, evt);
+            }
+
+            var stages = new Dictionary<string, StageData>(StringComparer.Ordinal);
+            foreach (StageData stage in expeditionFile.Stages)
+            {
+                if (stages.ContainsKey(stage.Id))
+                {
+                    throw new ContentException("Duplicate stage id '" + stage.Id + "'.");
+                }
+
+                stages.Add(stage.Id, stage);
+            }
+
             ProgressionData progression = ReadJson<ProgressionData>(manifest.Progression);
 
-            var pack = new ContentPack(manifest, skills, characters, enemies, encounters, progression);
+            var pack = new ContentPack(
+                manifest, skills, characters, enemies, encounters, stages, rewardTables, events, progression);
             pack.Validate();
             return pack;
         }
@@ -220,6 +271,39 @@ namespace DarkMyst.Content
             }
 
             return encounter;
+        }
+
+        public StageData GetStage(string id)
+        {
+            StageData stage;
+            if (!_stages.TryGetValue(id, out stage))
+            {
+                throw new ContentException("Unknown stage id '" + id + "'.");
+            }
+
+            return stage;
+        }
+
+        public RewardTableData GetRewardTable(string id)
+        {
+            RewardTableData table;
+            if (!_rewardTables.TryGetValue(id, out table))
+            {
+                throw new ContentException("Unknown reward table id '" + id + "'.");
+            }
+
+            return table;
+        }
+
+        public EventData GetEvent(string id)
+        {
+            EventData evt;
+            if (!_events.TryGetValue(id, out evt))
+            {
+                throw new ContentException("Unknown event id '" + id + "'.");
+            }
+
+            return evt;
         }
 
         public List<SkillDefinition> ResolveSkills(IEnumerable<string> skillIds)
@@ -357,6 +441,10 @@ namespace DarkMyst.Content
                 }
             }
 
+            ValidateRewardTables(problems);
+            ValidateEvents(problems);
+            ValidateStages(problems);
+
             if (Manifest.RulesVersion != Combat.CombatRules.Version)
             {
                 problems.Add(
@@ -369,6 +457,315 @@ namespace DarkMyst.Content
                 throw new ContentException(
                     "Content pack " + Manifest.ContentVersion + " is invalid:" + Environment.NewLine
                     + " - " + string.Join(Environment.NewLine + " - ", problems));
+            }
+        }
+
+        /// <summary>Node kinds a layer can actually draw from its weighted mix, in a fixed order.
+        /// <see cref="NodeKind.Boss"/> is deliberately excluded: it is placed by the generator,
+        /// never rolled.</summary>
+        private static readonly NodeKind[] DrawableNodeKinds =
+        {
+            NodeKind.Battle, NodeKind.Event, NodeKind.Treasure, NodeKind.Rest
+        };
+
+        private void ValidateRewardTables(List<string> problems)
+        {
+            foreach (RewardTableData table in _rewardTables.Values)
+            {
+                if (table.Entries.Count == 0)
+                {
+                    problems.Add("Reward table '" + table.Id + "' has no entries.");
+                    continue;
+                }
+
+                long totalWeight = 0;
+                foreach (RewardEntryData entry in table.Entries)
+                {
+                    if (entry.Weight <= 0)
+                    {
+                        problems.Add("Reward table '" + table.Id + "' has an entry with a non-positive weight.");
+                    }
+
+                    totalWeight += entry.Weight;
+
+                    if (entry.Kind == RewardEntryKind.Material && string.IsNullOrEmpty(entry.RefId))
+                    {
+                        problems.Add(
+                            "Reward table '" + table.Id + "' has a Material entry with no refId.");
+                    }
+
+                    if (entry.Kind == RewardEntryKind.Character)
+                    {
+                        if (string.IsNullOrEmpty(entry.RefId))
+                        {
+                            problems.Add(
+                                "Reward table '" + table.Id + "' has a Character entry with no refId.");
+                        }
+                        else if (!_characters.ContainsKey(entry.RefId))
+                        {
+                            problems.Add(
+                                "Reward table '" + table.Id + "' drops unknown character '" + entry.RefId + "'.");
+                        }
+                    }
+
+                    if ((entry.Kind == RewardEntryKind.Gold || entry.Kind == RewardEntryKind.Material)
+                        && entry.MinAmount > entry.MaxAmount)
+                    {
+                        problems.Add(
+                            "Reward table '" + table.Id + "' has an entry whose minAmount exceeds maxAmount.");
+                    }
+                }
+
+                if (totalWeight <= 0)
+                {
+                    problems.Add("Reward table '" + table.Id + "' has no entry with positive weight to roll.");
+                }
+            }
+        }
+
+        private void ValidateEvents(List<string> problems)
+        {
+            foreach (EventData evt in _events.Values)
+            {
+                if (evt.Outcomes.Count == 0)
+                {
+                    problems.Add("Event '" + evt.Id + "' has no outcomes.");
+                    continue;
+                }
+
+                long totalWeight = 0;
+                foreach (EventOutcomeData outcome in evt.Outcomes)
+                {
+                    if (outcome.Weight <= 0)
+                    {
+                        problems.Add("Event '" + evt.Id + "' has an outcome with a non-positive weight.");
+                    }
+
+                    totalWeight += outcome.Weight;
+
+                    switch (outcome.Kind)
+                    {
+                        case EventOutcomeKind.GrantBuffSkill:
+                            ValidateBuffSkillReference(evt.Id, outcome.SkillId, problems);
+                            break;
+
+                        case EventOutcomeKind.GrantMaterial:
+                            if (string.IsNullOrEmpty(outcome.MaterialId))
+                            {
+                                problems.Add(
+                                    "Event '" + evt.Id + "' has a GrantMaterial outcome with no materialId.");
+                            }
+
+                            break;
+
+                        case EventOutcomeKind.GrantGold:
+                            if (outcome.MinAmount > outcome.MaxAmount)
+                            {
+                                problems.Add(
+                                    "Event '" + evt.Id + "' has a GrantGold outcome whose minAmount exceeds maxAmount.");
+                            }
+
+                            break;
+
+                        case EventOutcomeKind.HealTeamPercent:
+                            if (outcome.MinAmount <= 0)
+                            {
+                                problems.Add(
+                                    "Event '" + evt.Id
+                                    + "' has a HealTeamPercent outcome that heals nothing (minAmount must be > 0).");
+                            }
+
+                            break;
+                    }
+                }
+
+                if (totalWeight <= 0)
+                {
+                    problems.Add("Event '" + evt.Id + "' has no outcome with positive weight to roll.");
+                }
+            }
+        }
+
+        /// <summary>
+        /// A run-scoped buff is injected into every unit's own skill list (see
+        /// <c>DarkMyst.Expedition.ExpeditionRun</c>), so the skill it names must actually fire
+        /// there: an <see cref="TriggerKind.OnAction"/> skill would never trigger at battle
+        /// start, and a leader-only skill would silently do nothing for whichever unit is not
+        /// occupying the leader slot that battle.
+        /// </summary>
+        private void ValidateBuffSkillReference(string eventId, string skillId, List<string> problems)
+        {
+            if (string.IsNullOrEmpty(skillId))
+            {
+                problems.Add("Event '" + eventId + "' has a GrantBuffSkill outcome with no skillId.");
+                return;
+            }
+
+            SkillDefinition skill;
+            if (!_skills.TryGetValue(skillId, out skill))
+            {
+                problems.Add("Event '" + eventId + "' grants unknown skill '" + skillId + "' as a buff.");
+                return;
+            }
+
+            if (skill.Trigger != TriggerKind.OnBattleStart)
+            {
+                problems.Add(
+                    "Event '" + eventId + "' grants skill '" + skillId + "' as a run buff, but its trigger is "
+                    + skill.Trigger + " instead of OnBattleStart, so it would never apply.");
+            }
+
+            if (skill.IsLeaderSkill)
+            {
+                problems.Add(
+                    "Event '" + eventId + "' grants skill '" + skillId
+                    + "' as a run buff, but it is a leader skill: it would stop applying the moment the "
+                    + "unit holding it is not in the leader slot, or is downed.");
+            }
+        }
+
+        private void ValidateStages(List<string> problems)
+        {
+            foreach (StageData stage in _stages.Values)
+            {
+                if (string.IsNullOrEmpty(stage.Id))
+                {
+                    problems.Add("A stage has no id.");
+                    continue;
+                }
+
+                if (stage.RecommendedLevel <= 0)
+                {
+                    problems.Add("Stage '" + stage.Id + "' has a non-positive recommendedLevel.");
+                }
+
+                if (stage.RestHealPerMille < 0)
+                {
+                    problems.Add("Stage '" + stage.Id + "' has a negative restHealPerMille.");
+                }
+
+                if (stage.BranchChancePerMille < 0 || stage.BranchChancePerMille > 1000)
+                {
+                    problems.Add("Stage '" + stage.Id + "' has a branchChancePerMille outside 0..1000.");
+                }
+
+                if (string.IsNullOrEmpty(stage.BossEncounterId))
+                {
+                    problems.Add("Stage '" + stage.Id + "' has no bossEncounterId.");
+                }
+                else if (!_encounters.ContainsKey(stage.BossEncounterId))
+                {
+                    problems.Add(
+                        "Stage '" + stage.Id + "' references unknown boss encounter '"
+                        + stage.BossEncounterId + "'.");
+                }
+
+                if (!string.IsNullOrEmpty(stage.ClearRewardTableId) && !_rewardTables.ContainsKey(stage.ClearRewardTableId))
+                {
+                    problems.Add(
+                        "Stage '" + stage.Id + "' references unknown clear reward table '"
+                        + stage.ClearRewardTableId + "'.");
+                }
+
+                if (!string.IsNullOrEmpty(stage.NodeRewardTableId) && !_rewardTables.ContainsKey(stage.NodeRewardTableId))
+                {
+                    problems.Add(
+                        "Stage '" + stage.Id + "' references unknown node reward table '"
+                        + stage.NodeRewardTableId + "'.");
+                }
+
+                if (stage.Layers.Count == 0)
+                {
+                    problems.Add("Stage '" + stage.Id + "' has no layers, so it cannot generate a map.");
+                    continue;
+                }
+
+                for (int i = 0; i < stage.Layers.Count; i++)
+                {
+                    ValidateLayer(stage, i, problems);
+                }
+            }
+        }
+
+        private void ValidateLayer(StageData stage, int layerIndex, List<string> problems)
+        {
+            StageLayerData layer = stage.Layers[layerIndex];
+            string where = "Stage '" + stage.Id + "' layer " + layerIndex;
+
+            if (layer.NodeCount <= 0)
+            {
+                problems.Add(where + " has a non-positive nodeCount.");
+                return;
+            }
+
+            int weightOf(NodeKind kind)
+            {
+                int value;
+                return layer.NodeWeights != null && layer.NodeWeights.TryGetValue(kind, out value) ? value : 0;
+            }
+
+            int bossWeight;
+            if (layer.NodeWeights != null
+                && layer.NodeWeights.TryGetValue(NodeKind.Boss, out bossWeight) && bossWeight > 0)
+            {
+                problems.Add(
+                    where + " lists a weight for Boss, but Boss is only ever the single node "
+                    + "placed after the last layer, never drawn within one.");
+            }
+
+            long totalWeight = 0;
+            foreach (NodeKind kind in DrawableNodeKinds)
+            {
+                totalWeight += weightOf(kind);
+            }
+
+            if (totalWeight <= 0)
+            {
+                problems.Add(
+                    where + " has no node kind with positive weight, so it can never generate a node.");
+                return;
+            }
+
+            if (weightOf(NodeKind.Battle) > 0)
+            {
+                ValidatePool(where, "encounterIds", layer.EncounterIds, _encounters.ContainsKey, problems);
+            }
+
+            if (weightOf(NodeKind.Event) > 0)
+            {
+                ValidatePool(where, "eventIds", layer.EventIds, _events.ContainsKey, problems);
+            }
+
+            if (weightOf(NodeKind.Treasure) > 0)
+            {
+                if (string.IsNullOrEmpty(layer.TreasureTableId))
+                {
+                    problems.Add(
+                        where + " can draw a Treasure node but has no treasureTableId.");
+                }
+                else if (!_rewardTables.ContainsKey(layer.TreasureTableId))
+                {
+                    problems.Add(
+                        where + " references unknown treasure table '" + layer.TreasureTableId + "'.");
+                }
+            }
+        }
+
+        private static void ValidatePool(
+            string where, string fieldName, List<string> ids, Func<string, bool> exists, List<string> problems)
+        {
+            if (ids == null || ids.Count == 0)
+            {
+                problems.Add(where + " can draw a node kind whose pool (" + fieldName + ") is empty.");
+                return;
+            }
+
+            foreach (string id in ids)
+            {
+                if (!exists(id))
+                {
+                    problems.Add(where + " references unknown id '" + id + "' in " + fieldName + ".");
+                }
             }
         }
 
@@ -430,6 +827,13 @@ namespace DarkMyst.Content
         private sealed class EncounterFile
         {
             public List<EncounterData> Encounters { get; set; } = new List<EncounterData>();
+        }
+
+        private sealed class ExpeditionFile
+        {
+            public List<RewardTableData> RewardTables { get; set; } = new List<RewardTableData>();
+            public List<EventData> Events { get; set; } = new List<EventData>();
+            public List<StageData> Stages { get; set; } = new List<StageData>();
         }
     }
 }

@@ -1,0 +1,87 @@
+{
+  "rewardTables": [
+    {
+      "id": "drop_ashfields_common",
+      "entries": [
+        { "kind": "Gold", "weight": 60, "minAmount": 20, "maxAmount": 60 },
+        { "kind": "Material", "weight": 25, "refId": "mat_ashen_sigil", "minAmount": 1, "maxAmount": 2 },
+        { "kind": "Nothing", "weight": 15 }
+      ]
+    },
+    {
+      "id": "drop_ashfields_treasure",
+      "entries": [
+        { "kind": "Gold", "weight": 40, "minAmount": 80, "maxAmount": 160 },
+        { "kind": "Material", "weight": 25, "refId": "mat_myst_core", "minAmount": 1, "maxAmount": 1 },
+        { "kind": "Material", "weight": 20, "refId": "mat_ashen_sigil", "minAmount": 2, "maxAmount": 4 },
+        { "kind": "Character", "weight": 5, "refId": "chr_pale_stalker_i" },
+        { "kind": "Nothing", "weight": 10 }
+      ]
+    },
+    {
+      "id": "drop_ashfields_clear",
+      "entries": [
+        { "kind": "Gold", "weight": 50, "minAmount": 300, "maxAmount": 500 },
+        { "kind": "Material", "weight": 50, "refId": "mat_myst_core", "minAmount": 2, "maxAmount": 3 }
+      ]
+    }
+  ],
+
+  "events": [
+    {
+      "id": "evt_wandering_merchant",
+      "name": "Wandering Merchant",
+      "outcomes": [
+        { "kind": "GrantGold", "weight": 40, "minAmount": 50, "maxAmount": 120 },
+        { "kind": "GrantBuffSkill", "weight": 35, "skillId": "skl_relic_ember_ward" },
+        { "kind": "Nothing", "weight": 25 }
+      ]
+    },
+    {
+      "id": "evt_old_shrine",
+      "name": "Old Shrine",
+      "outcomes": [
+        { "kind": "GrantBuffSkill", "weight": 50, "skillId": "skl_relic_swift_charm" },
+        { "kind": "HealTeamPercent", "weight": 30, "minAmount": 300 },
+        { "kind": "Nothing", "weight": 20 }
+      ]
+    }
+  ],
+
+  "stages": [
+    {
+      "id": "stg_ashfields",
+      "name": "The Ashfields Expedition",
+      "recommendedLevel": 12,
+      "restHealPerMille": 400,
+      "branchChancePerMille": 400,
+      "keepRewardsOnDefeat": true,
+      "nodeRewardTableId": "drop_ashfields_common",
+      "clearRewardTableId": "drop_ashfields_clear",
+      "bossEncounterId": "enc_boss_ashen_revenant",
+      "layers": [
+        {
+          "nodeCount": 3,
+          "nodeWeights": { "Battle": 55, "Event": 20, "Treasure": 15, "Rest": 10 },
+          "encounterIds": ["enc_tutorial_hounds"],
+          "eventIds": ["evt_wandering_merchant", "evt_old_shrine"],
+          "treasureTableId": "drop_ashfields_treasure"
+        },
+        {
+          "nodeCount": 3,
+          "nodeWeights": { "Battle": 60, "Event": 15, "Treasure": 15, "Rest": 10 },
+          "encounterIds": ["enc_tutorial_hounds", "enc_crypt_patrol"],
+          "eventIds": ["evt_wandering_merchant", "evt_old_shrine"],
+          "treasureTableId": "drop_ashfields_treasure"
+        },
+        {
+          "nodeCount": 3,
+          "nodeWeights": { "Battle": 65, "Event": 10, "Treasure": 15, "Rest": 10 },
+          "encounterIds": ["enc_crypt_patrol"],
+          "eventIds": ["evt_old_shrine"],
+          "treasureTableId": "drop_ashfields_treasure"
+        }
+      ]
+    }
+  ]
+}
