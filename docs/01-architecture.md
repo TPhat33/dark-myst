@@ -6,7 +6,10 @@
 flowchart TD
     A["แอป Unity (iOS / Android)"] --> B["Game API (ASP.NET Core)"]
     B --> C["PostgreSQL — บัญชีและตัวละคร"]
-    B --> D["DarkMyst.Combat — คำนวณการต่อสู้"]
+    B --> I["DarkMyst.Expedition — เดินด่านสำรวจ"]
+    I --> D["DarkMyst.Combat — คำนวณการต่อสู้"]
+    B --> D
+    A --> I
     A --> D
     E["Apple / Google / AdMob"] --> F["ตรวจสอบและบันทึกรางวัล"]
     F --> C
@@ -15,8 +18,9 @@ flowchart TD
     G --> H
 ```
 
-`DarkMyst.Combat` ปรากฏสองที่โดยตั้งใจ — เป็น **assembly เดียวกัน** ที่คอมไพล์ครั้งเดียว
-แล้วรันทั้งบนเซิร์ฟเวอร์และในไคลเอนต์
+`DarkMyst.Combat` และ `DarkMyst.Expedition` ปรากฏสองที่โดยตั้งใจ — เป็น **assembly เดียวกัน**
+ที่คอมไพล์ครั้งเดียว แล้วรันทั้งบนเซิร์ฟเวอร์และในไคลเอนต์ ไคลเอนต์ใช้เพื่อแสดงผลและสนามทดลอง
+เซิร์ฟเวอร์ใช้เพื่อตัดสินผลที่จ่ายรางวัลจริง
 
 ## ความรับผิดชอบของแต่ละส่วน
 
@@ -51,7 +55,8 @@ docs/                     เอกสารชุดนี้
 ```
 
 ยังไม่มี `server/` และ `admin/` ในรีโปนี้ — จะเพิ่มในระยะ D ตาม [06-roadmap.md](06-roadmap.md)
-โดยอ้างอิง `src/DarkMyst.Combat` และ `src/DarkMyst.Content` ชุดเดิม
+โดยอ้างอิง `src/DarkMyst.Combat`, `src/DarkMyst.Content` และ `src/DarkMyst.Expedition` ชุดเดิม
+ไม่ใช่เขียนกฎขึ้นใหม่ฝั่งเซิร์ฟเวอร์
 
 ## ทำไม Unity ถึงใช้ DLL ไม่ใช่ source
 
