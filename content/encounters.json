@@ -23,6 +23,17 @@
       ]
     },
     {
+      "id": "enc_warlock_conclave",
+      "name": "The Warlock Conclave",
+      "leaderSlot": 0,
+      "units": [
+        { "enemyId": "enm_crypt_warlock", "slot": 0, "statScalePerMille": 2200 },
+        { "enemyId": "enm_crypt_warlock", "slot": 1, "statScalePerMille": 2200 },
+        { "enemyId": "enm_wailing_wisp", "slot": 3, "statScalePerMille": 2200 },
+        { "enemyId": "enm_wailing_wisp", "slot": 4, "statScalePerMille": 2200 }
+      ]
+    },
+    {
       "id": "enc_boss_ashen_revenant",
       "name": "The Ashen Revenant",
       "leaderSlot": 0,

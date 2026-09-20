@@ -34,7 +34,7 @@ jobs:
       # not in a player's session.
       - name: Balance sweep
         run: |
-          for encounter in enc_tutorial_hounds enc_crypt_patrol enc_boss_ashen_revenant; do
+          for encounter in enc_tutorial_hounds enc_crypt_patrol enc_warlock_conclave enc_boss_ashen_revenant; do
             dotnet run --project tools/DarkMyst.SimRunner -c Release --no-build -- \
               sweep --encounter "$encounter" --repeat 200
             echo
@@ -50,3 +50,14 @@ jobs:
               expedition --stage stg_ashfields --repeat 200 --level "$level"
             echo
           done
+
+      # Roster diversity: a content change that quietly makes one team dominant, one line dead
+      # weight, or a losing team's comp swap stop mattering should show up here, not in a
+      # balance review months later. Kept to one level and 100 seeds/cell (a fraction of the
+      # 300+ used to write the numbers into docs/07-testing-plan.md) so it stays fast in CI;
+      # the full sweep is a manual `simrunner matrix` run, not a CI job.
+      - name: Roster matrix
+        run: |
+          dotnet run --project tools/DarkMyst.SimRunner -c Release --no-build -- \
+            matrix --level 12 --repeat 100 \
+            --rosters "core_balanced=chr_ashen_knight_i,chr_grave_warden_i,chr_ember_adept_i,chr_tide_oracle_i,chr_pale_stalker_i;no_healer=chr_ashen_knight_i,chr_grave_warden_i,chr_thorn_maiden_i,chr_mire_hexer_i,chr_pale_stalker_i;swap_shackleborn=chr_ashen_knight_i,chr_grave_warden_i,chr_shackleborn_i,chr_tide_oracle_i,chr_pale_stalker_i;swap_bramble_warden=chr_bramble_warden_i,chr_grave_warden_i,chr_ember_adept_i,chr_tide_oracle_i,chr_pale_stalker_i"

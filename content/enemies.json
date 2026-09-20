@@ -41,6 +41,26 @@
       "skillIds": ["skl_acolyte_chant", "skl_basic_bolt"]
     },
     {
+      "id": "enm_crypt_warlock",
+      "name": "Crypt Warlock",
+      "affinity": "Umbral",
+      "stats": {
+        "maxHp": 700, "attack": 40, "magic": 140, "defense": 40,
+        "resist": 80, "speed": 100, "critRate": 40, "critDamage": 60
+      },
+      "skillIds": ["skl_warlock_blast", "skl_basic_bolt"]
+    },
+    {
+      "id": "enm_wailing_wisp",
+      "name": "Wailing Wisp",
+      "affinity": "Neutral",
+      "stats": {
+        "maxHp": 380, "attack": 25, "magic": 90, "defense": 30,
+        "resist": 60, "speed": 120, "critRate": 30, "critDamage": 0
+      },
+      "skillIds": ["skl_frost_nova", "skl_basic_bolt"]
+    },
+    {
       "id": "enm_ashen_revenant",
       "name": "The Ashen Revenant",
       "affinity": "Ember",

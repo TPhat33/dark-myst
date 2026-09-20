@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using DarkMyst.Combat;
 using DarkMyst.Combat.Model;
@@ -12,12 +13,50 @@ namespace DarkMyst.Content.Tests
         {
             ContentPack pack = ShippedContent.Instance;
 
-            Assert.Equal("0.2.0", pack.Version);
+            Assert.Equal("0.3.0", pack.Version);
             Assert.Equal(CombatRules.Version, pack.Manifest.RulesVersion);
             Assert.NotEmpty(pack.Characters);
             Assert.NotEmpty(pack.Enemies);
             Assert.NotEmpty(pack.Encounters);
             Assert.NotEmpty(pack.Stages);
+        }
+
+        [Fact]
+        public void The_roster_has_between_twelve_and_sixteen_character_lines()
+        {
+            ContentPack pack = ShippedContent.Instance;
+
+            var lines = new HashSet<string>(StringComparer.Ordinal);
+            foreach (CharacterData character in pack.Characters)
+            {
+                lines.Add(character.LineId);
+            }
+
+            // docs/00-overview.md sets the v1 character target at 12-16 lines. This is a content
+            // count, not an engine rule, but it is exactly the kind of thing that quietly drifts
+            // (a line removed for rebalancing, an experimental line left in) without a test
+            // failing loudly the moment it falls outside what the design doc promises.
+            Assert.InRange(lines.Count, 12, 16);
+        }
+
+        [Fact]
+        public void Every_affinity_is_represented_by_at_least_one_character_line()
+        {
+            ContentPack pack = ShippedContent.Instance;
+
+            var seen = new HashSet<Affinity>();
+            foreach (CharacterData character in pack.Characters)
+            {
+                seen.Add(character.Affinity);
+            }
+
+            // The affinity triangle (Ember/Verdant/Tide) and the mirror pair (Radiant/Umbral)
+            // only matter for team building if every affinity actually has a line behind it —
+            // an empty affinity is a hole in the wheel, not a design choice.
+            foreach (Affinity affinity in (Affinity[])Enum.GetValues(typeof(Affinity)))
+            {
+                Assert.True(seen.Contains(affinity), affinity + " has no character line.");
+            }
         }
 
         [Fact]
@@ -177,7 +216,7 @@ namespace DarkMyst.Content.Tests
                 OwnerId = "player_1",
                 CharacterId = characterId,
                 Level = level,
-                ContentVersion = "0.2.0"
+                ContentVersion = "0.3.0"
             });
         }
     }

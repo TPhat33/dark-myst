@@ -9,7 +9,7 @@
 ## เริ่มต้น
 
 ```bash
-dotnet test                                              # กฎเกมทั้งหมด (120 เคส)
+dotnet test                                              # กฎเกมทั้งหมด (123 เคส)
 dotnet run --project tools/DarkMyst.SimRunner -- validate # ตรวจ content pack
 ./tools/build-unity-plugins.sh                            # เตรียมโปรเจกต์ Unity
 ```
@@ -39,6 +39,10 @@ dotnet run --project tools/DarkMyst.SimRunner -- expedition \
 # วัดสมดุลการสำรวจ: อัตราจบด่านและรางวัลเฉลี่ยจาก 300 seed
 dotnet run --project tools/DarkMyst.SimRunner -- expedition \
   --stage stg_ashfields --repeat 300 --level 12
+
+# วัดความหลากหลายของโรสเตอร์: หลายทีมสู้กับหลายด่านพร้อมกัน พิมพ์เป็นตาราง
+dotnet run --project tools/DarkMyst.SimRunner -- matrix --level 12 --repeat 300 \
+  --rosters "balanced=chr_ashen_knight_i,chr_grave_warden_i,chr_ember_adept_i,chr_tide_oracle_i,chr_pale_stalker_i;no_healer=chr_ashen_knight_i,chr_grave_warden_i,chr_thorn_maiden_i,chr_mire_hexer_i,chr_pale_stalker_i"
 ```
 
 ทีมสุดท้ายไม่มีตัวฮีล อัตราชนะ 0% — การจัดทีมมีผลจริง ไม่ใช่แค่ความรู้สึก
@@ -50,7 +54,7 @@ src/DarkMyst.Combat/       กฎการต่อสู้ — ไม่มี
 src/DarkMyst.Content/      content pack, สูตรเลเวลและ evolve
 src/DarkMyst.Expedition/   ระบบสำรวจ (ฟาร์ม) — แผนที่จุดเชื่อม บัฟเฉพาะรอบ ต่อยอดจากทั้งสองข้างบน
 tests/                     เทสต์ของกฎทั้งหมด
-tools/DarkMyst.SimRunner/  CLI: validate / battle / sweep / expedition
+tools/DarkMyst.SimRunner/  CLI: validate / battle / sweep / expedition / matrix
 content/                   ข้อมูลเกมทั้งหมดเป็น JSON — แหล่งความจริงชุดเดียว
 unity/DarkMyst/            โปรเจกต์ Unity (2022.3 LTS)
 docs/                      เอกสารออกแบบ

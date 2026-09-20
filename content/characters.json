@@ -227,6 +227,171 @@
       },
       "skillIds": ["skl_rend_wards", "skl_venom_dart", "skl_basic_bolt", "skl_dying_curse"],
       "flavor": "Trades in small curses. Volume is where the money is."
+    },
+
+    {
+      "id": "chr_bramble_warden_i",
+      "lineId": "line_bramble_warden",
+      "name": "Bramble Warden",
+      "affinity": "Verdant",
+      "role": "Sentinel",
+      "rarity": 3,
+      "evolveStage": 1,
+      "nextStageId": "chr_bramble_warden_ii",
+      "baseStats": {
+        "maxHp": 1400, "attack": 96, "magic": 46, "defense": 108,
+        "resist": 100, "speed": 88, "critRate": 30, "critDamage": 0
+      },
+      "growthPerLevel": {
+        "maxHp": 70, "attack": 4, "magic": 1, "defense": 5,
+        "resist": 5, "speed": 1, "critRate": 0, "critDamage": 0
+      },
+      "skillIds": ["skl_bramble_ward", "skl_basic_strike", "skl_thorn_carapace", "skl_lead_bramble_ward"],
+      "flavor": "Rooted itself over the old battlefield. Something down there kept feeding the roots."
+    },
+    {
+      "id": "chr_bramble_warden_ii",
+      "lineId": "line_bramble_warden",
+      "name": "Heartwood Bastion",
+      "affinity": "Verdant",
+      "role": "Sentinel",
+      "rarity": 4,
+      "evolveStage": 2,
+      "baseStats": {
+        "maxHp": 2100, "attack": 132, "magic": 64, "defense": 158,
+        "resist": 146, "speed": 92, "critRate": 40, "critDamage": 0
+      },
+      "growthPerLevel": {
+        "maxHp": 78, "attack": 5, "magic": 2, "defense": 6,
+        "resist": 6, "speed": 1, "critRate": 1, "critDamage": 0
+      },
+      "skillIds": [
+        "skl_bramble_ward", "skl_bramble_renew", "skl_basic_strike",
+        "skl_bramble_shrug", "skl_thorn_carapace", "skl_lead_bramble_ward"
+      ],
+      "flavor": "The battlefield fed just enough. What stands now doesn't need soil at all."
+    },
+
+    {
+      "id": "chr_riptide_stormcaller_i",
+      "lineId": "line_riptide_stormcaller",
+      "name": "Riptide Stormcaller",
+      "affinity": "Tide",
+      "role": "Stormcaller",
+      "rarity": 3,
+      "evolveStage": 1,
+      "baseStats": {
+        "maxHp": 980, "attack": 54, "magic": 152, "defense": 58,
+        "resist": 104, "speed": 106, "critRate": 60, "critDamage": 50
+      },
+      "growthPerLevel": {
+        "maxHp": 48, "attack": 2, "magic": 8, "defense": 2,
+        "resist": 4, "speed": 1, "critRate": 1, "critDamage": 1
+      },
+      "skillIds": ["skl_undertow_shred", "skl_basic_bolt"],
+      "flavor": "Reads the tide's grudges instead of its patterns. The grudges are more accurate."
+    },
+
+    {
+      "id": "chr_dawnrider_i",
+      "lineId": "line_dawnrider",
+      "name": "Dawnrider",
+      "affinity": "Radiant",
+      "role": "Herald",
+      "rarity": 3,
+      "evolveStage": 1,
+      "nextStageId": "chr_dawnrider_ii",
+      "baseStats": {
+        "maxHp": 1050, "attack": 140, "magic": 50, "defense": 80,
+        "resist": 92, "speed": 118, "critRate": 90, "critDamage": 80
+      },
+      "growthPerLevel": {
+        "maxHp": 50, "attack": 6, "magic": 1, "defense": 3,
+        "resist": 4, "speed": 2, "critRate": 1, "critDamage": 2
+      },
+      "skillIds": ["skl_radiant_finish", "skl_basic_strike", "skl_lead_dawnrider"],
+      "flavor": "Rides ahead of the army so the army arrives already winning."
+    },
+    {
+      "id": "chr_dawnrider_ii",
+      "lineId": "line_dawnrider",
+      "name": "Dawnrider Exalted",
+      "affinity": "Radiant",
+      "role": "Herald",
+      "rarity": 4,
+      "evolveStage": 2,
+      "baseStats": {
+        "maxHp": 1550, "attack": 196, "magic": 70, "defense": 112,
+        "resist": 128, "speed": 124, "critRate": 110, "critDamage": 120
+      },
+      "growthPerLevel": {
+        "maxHp": 58, "attack": 7, "magic": 1, "defense": 4,
+        "resist": 5, "speed": 2, "critRate": 1, "critDamage": 2
+      },
+      "skillIds": [
+        "skl_radiant_finish", "skl_basic_strike", "skl_revenant_second_wind", "skl_lead_dawnrider"
+      ],
+      "flavor": "The army no longer needs to arrive at all."
+    },
+
+    {
+      "id": "chr_ashfield_reaver_i",
+      "lineId": "line_ashfield_reaver",
+      "name": "Ashfield Reaver",
+      "affinity": "Neutral",
+      "role": "Reaver",
+      "rarity": 3,
+      "evolveStage": 1,
+      "baseStats": {
+        "maxHp": 1150, "attack": 150, "magic": 40, "defense": 88,
+        "resist": 70, "speed": 100, "critRate": 70, "critDamage": 80
+      },
+      "growthPerLevel": {
+        "maxHp": 54, "attack": 7, "magic": 1, "defense": 3,
+        "resist": 3, "speed": 1, "critRate": 1, "critDamage": 1
+      },
+      "skillIds": ["skl_reaver_sweep", "skl_basic_strike", "skl_hound_frenzy"],
+      "flavor": "Fought for every banner going. Ran out of banners to remember which."
+    },
+
+    {
+      "id": "chr_hollow_warder_i",
+      "lineId": "line_hollow_warder",
+      "name": "Hollow Warder",
+      "affinity": "Neutral",
+      "role": "Warder",
+      "rarity": 3,
+      "evolveStage": 1,
+      "baseStats": {
+        "maxHp": 1300, "attack": 96, "magic": 60, "defense": 136,
+        "resist": 104, "speed": 92, "critRate": 30, "critDamage": 0
+      },
+      "growthPerLevel": {
+        "maxHp": 62, "attack": 4, "magic": 2, "defense": 6,
+        "resist": 4, "speed": 1, "critRate": 0, "critDamage": 0
+      },
+      "skillIds": ["skl_nullshroud", "skl_basic_strike"],
+      "flavor": "Doesn't flatter anyone's lucky streak. Especially not the enemy's."
+    },
+
+    {
+      "id": "chr_shackleborn_i",
+      "lineId": "line_shackleborn",
+      "name": "Shackleborn",
+      "affinity": "Neutral",
+      "role": "Controller",
+      "rarity": 3,
+      "evolveStage": 1,
+      "baseStats": {
+        "maxHp": 1300, "attack": 130, "magic": 44, "defense": 100,
+        "resist": 70, "speed": 96, "critRate": 50, "critDamage": 0
+      },
+      "growthPerLevel": {
+        "maxHp": 62, "attack": 5, "magic": 1, "defense": 4,
+        "resist": 3, "speed": 1, "critRate": 1, "critDamage": 0
+      },
+      "skillIds": ["skl_iron_verdict", "skl_basic_strike"],
+      "flavor": "Chains an enemy's next breath before it can spend it."
     }
   ]
 }

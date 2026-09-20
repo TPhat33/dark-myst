@@ -1,5 +1,5 @@
 {
-  "contentVersion": "0.2.0",
+  "contentVersion": "0.3.0",
   "rulesVersion": "1.0.0",
   "skills": "skills.json",
   "characters": "characters.json",

@@ -225,10 +225,10 @@
       "effects": [
         {
           "kind": "Shield",
-          "target": "LowestHpAlly",
+          "target": "AllAllies",
           "statusId": "st_dawn_aegis",
           "scalingStat": "Magic",
-          "amountPerMille": 1400,
+          "amountPerMille": 1200,
           "durationRounds": 3,
           "vfxId": "vfx_aegis"
         }
@@ -510,6 +510,227 @@
           "target": "LowestHpAlly",
           "scalingStat": "Magic",
           "amountPerMille": 1300
+        }
+      ]
+    },
+
+    {
+      "id": "skl_bramble_ward",
+      "name": "Bramble Ward",
+      "trigger": "OnBattleStart",
+      "effects": [
+        {
+          "kind": "Taunt",
+          "target": "Self",
+          "statusId": "st_taunt_bramble",
+          "durationRounds": 3,
+          "stackRule": "Refresh"
+        },
+        {
+          "kind": "StatModifier",
+          "target": "Self",
+          "statusId": "st_bramble_ward",
+          "modifiedStat": "Resist",
+          "amountPerMille": 300,
+          "durationRounds": 3,
+          "stackRule": "Refresh"
+        }
+      ]
+    },
+    {
+      "id": "skl_bramble_renew",
+      "name": "Renew the Bramble",
+      "trigger": "OnRoundStart",
+      "activationChancePerMille": 500,
+      "effects": [
+        {
+          "kind": "Taunt",
+          "target": "Self",
+          "statusId": "st_taunt_bramble",
+          "durationRounds": 2,
+          "stackRule": "Refresh"
+        }
+      ]
+    },
+    {
+      "id": "skl_bramble_shrug",
+      "name": "Shrug It Off",
+      "trigger": "OnBeforeAction",
+      "activationChancePerMille": 350,
+      "cooldownRounds": 2,
+      "effects": [
+        {
+          "kind": "Cleanse",
+          "target": "Self",
+          "removeCount": 1,
+          "vfxId": "vfx_shrug"
+        }
+      ]
+    },
+    {
+      "id": "skl_lead_bramble_ward",
+      "name": "Thicket Ward",
+      "trigger": "OnBattleStart",
+      "isLeaderSkill": true,
+      "effects": [
+        {
+          "kind": "StatModifier",
+          "target": "AllAllies",
+          "statusId": "st_lead_bramble_ward",
+          "modifiedStat": "Resist",
+          "amountPerMille": 180,
+          "durationRounds": 99,
+          "stackRule": "Ignore"
+        }
+      ]
+    },
+
+    {
+      "id": "skl_undertow_shred",
+      "name": "Undertow",
+      "trigger": "OnAction",
+      "activationChancePerMille": 400,
+      "cooldownRounds": 3,
+      "effects": [
+        {
+          "kind": "Damage",
+          "target": "AllEnemies",
+          "damageKind": "Magical",
+          "powerPerMille": 650,
+          "vfxId": "vfx_undertow"
+        },
+        {
+          "kind": "StatModifier",
+          "target": "AllEnemies",
+          "statusId": "st_undertow_shred",
+          "modifiedStat": "Resist",
+          "amountPerMille": -220,
+          "durationRounds": 3,
+          "chancePerMille": 750,
+          "stackRule": "Refresh"
+        }
+      ]
+    },
+
+    {
+      "id": "skl_lead_dawnrider",
+      "name": "Dawnrider's Call",
+      "trigger": "OnBattleStart",
+      "isLeaderSkill": true,
+      "effects": [
+        {
+          "kind": "StatModifier",
+          "target": "AllAllies",
+          "statusId": "st_lead_dawnrider",
+          "modifiedStat": "Speed",
+          "amountPerMille": 150,
+          "durationRounds": 99,
+          "stackRule": "Ignore"
+        }
+      ]
+    },
+    {
+      "id": "skl_radiant_finish",
+      "name": "Radiant Finish",
+      "trigger": "OnAction",
+      "activationChancePerMille": 500,
+      "cooldownRounds": 2,
+      "effects": [
+        {
+          "kind": "Damage",
+          "target": "LowestHpEnemy",
+          "damageKind": "Physical",
+          "powerPerMille": 1400,
+          "ignoresTaunt": true,
+          "vfxId": "vfx_radiant_finish"
+        }
+      ]
+    },
+
+    {
+      "id": "skl_reaver_sweep",
+      "name": "Reaver's Sweep",
+      "trigger": "OnAction",
+      "activationChancePerMille": 450,
+      "cooldownRounds": 2,
+      "effects": [
+        {
+          "kind": "Damage",
+          "target": "AllEnemies",
+          "damageKind": "Physical",
+          "powerPerMille": 550,
+          "vfxId": "vfx_reaver_sweep"
+        }
+      ]
+    },
+
+    {
+      "id": "skl_nullshroud",
+      "name": "Nullshroud",
+      "trigger": "OnAction",
+      "activationChancePerMille": 400,
+      "cooldownRounds": 2,
+      "effects": [
+        {
+          "kind": "StatModifier",
+          "target": "AllEnemies",
+          "statusId": "st_nullshroud",
+          "modifiedStat": "CritRate",
+          "amountPerMille": -300,
+          "durationRounds": 3,
+          "chancePerMille": 700,
+          "stackRule": "Refresh"
+        },
+        {
+          "kind": "Shield",
+          "target": "LowestHpAlly",
+          "statusId": "st_warder_shield",
+          "scalingStat": "Defense",
+          "amountPerMille": 1500,
+          "durationRounds": 2,
+          "vfxId": "vfx_warder_shield"
+        }
+      ]
+    },
+
+    {
+      "id": "skl_iron_verdict",
+      "name": "Iron Verdict",
+      "trigger": "OnAction",
+      "activationChancePerMille": 500,
+      "cooldownRounds": 3,
+      "effects": [
+        {
+          "kind": "Damage",
+          "target": "FrontRowEnemy",
+          "damageKind": "Physical",
+          "powerPerMille": 700
+        },
+        {
+          "kind": "Stun",
+          "target": "FrontRowEnemy",
+          "statusId": "st_iron_verdict",
+          "durationRounds": 1,
+          "chancePerMille": 650,
+          "vfxId": "vfx_iron_verdict"
+        }
+      ]
+    },
+
+    {
+      "id": "skl_warlock_blast",
+      "name": "Warlock's Blast",
+      "trigger": "OnAction",
+      "activationChancePerMille": 500,
+      "cooldownRounds": 2,
+      "effects": [
+        {
+          "kind": "Damage",
+          "target": "HighestAttackEnemy",
+          "damageKind": "Magical",
+          "powerPerMille": 1300,
+          "ignoresTaunt": true,
+          "vfxId": "vfx_warlock_blast"
         }
       ]
     }

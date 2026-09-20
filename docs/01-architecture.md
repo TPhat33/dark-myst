@@ -46,8 +46,8 @@ DarkMyst.sln
 src/DarkMyst.Combat/      กฎการต่อสู้ — ไม่มี dependency, ไม่รู้จัก Unity
 src/DarkMyst.Content/     content pack, สูตรเลเวลและ evolve
 src/DarkMyst.Expedition/  ระบบสำรวจ (ฟาร์ม) — ต่อยอด Combat + Content, ไม่รู้จัก Unity
-tests/                    เทสต์ของกฎทั้งหมด (120 เคส)
-tools/DarkMyst.SimRunner/ CLI: validate / battle / sweep / expedition
+tests/                    เทสต์ของกฎทั้งหมด (123 เคส)
+tools/DarkMyst.SimRunner/ CLI: validate / battle / sweep / expedition / matrix
 tools/build-unity-plugins.sh
 content/                  ข้อมูลเกมทั้งหมดเป็น JSON — แหล่งความจริงชุดเดียว
 unity/DarkMyst/           โปรเจกต์ Unity
