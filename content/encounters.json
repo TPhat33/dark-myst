@@ -1,0 +1,36 @@
+{
+  "encounters": [
+    {
+      "id": "enc_tutorial_hounds",
+      "name": "Hounds at the Gate",
+      "leaderSlot": 0,
+      "units": [
+        { "enemyId": "enm_gloom_hound", "slot": 0 },
+        { "enemyId": "enm_gloom_hound", "slot": 1 },
+        { "enemyId": "enm_bone_archer", "slot": 3 }
+      ]
+    },
+    {
+      "id": "enc_crypt_patrol",
+      "name": "Crypt Patrol",
+      "leaderSlot": 0,
+      "units": [
+        { "enemyId": "enm_rot_swarm", "slot": 0, "statScalePerMille": 2000 },
+        { "enemyId": "enm_gloom_hound", "slot": 1, "statScalePerMille": 2000 },
+        { "enemyId": "enm_bone_archer", "slot": 2, "statScalePerMille": 2000 },
+        { "enemyId": "enm_crypt_acolyte", "slot": 3, "statScalePerMille": 2000 },
+        { "enemyId": "enm_bone_archer", "slot": 4, "statScalePerMille": 2400 }
+      ]
+    },
+    {
+      "id": "enc_boss_ashen_revenant",
+      "name": "The Ashen Revenant",
+      "leaderSlot": 0,
+      "units": [
+        { "enemyId": "enm_ashen_revenant", "slot": 0 },
+        { "enemyId": "enm_crypt_acolyte", "slot": 3, "statScalePerMille": 1400 },
+        { "enemyId": "enm_crypt_acolyte", "slot": 4, "statScalePerMille": 1400 }
+      ]
+    }
+  ]
+}

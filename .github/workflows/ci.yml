@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  rules:
+    name: Game rules and content
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Test
+        run: dotnet test --no-build -c Release --verbosity normal
+
+      # Catches a broken reference in content/ even when no test happens to touch it.
+      - name: Validate the content pack
+        run: dotnet run --project tools/DarkMyst.SimRunner -c Release --no-build -- validate
+
+      # A rule change that quietly makes an encounter unwinnable should show up in review,
+      # not in a player's session.
+      - name: Balance sweep
+        run: |
+          for encounter in enc_tutorial_hounds enc_crypt_patrol enc_boss_ashen_revenant; do
+            dotnet run --project tools/DarkMyst.SimRunner -c Release --no-build -- \
+              sweep --encounter "$encounter" --repeat 200
+            echo
+          done

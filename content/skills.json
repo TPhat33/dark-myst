@@ -1,0 +1,485 @@
+{
+  "skills": [
+    {
+      "id": "skl_basic_strike",
+      "name": "Strike",
+      "trigger": "OnAction",
+      "effects": [
+        {
+          "kind": "Damage",
+          "target": "RandomEnemy",
+          "damageKind": "Physical",
+          "powerPerMille": 1000,
+          "vfxId": "vfx_slash_light",
+          "sfxId": "sfx_slash_light"
+        }
+      ]
+    },
+    {
+      "id": "skl_basic_bolt",
+      "name": "Myst Bolt",
+      "trigger": "OnAction",
+      "effects": [
+        {
+          "kind": "Damage",
+          "target": "RandomEnemy",
+          "damageKind": "Magical",
+          "powerPerMille": 1000,
+          "vfxId": "vfx_bolt_violet",
+          "sfxId": "sfx_bolt"
+        }
+      ]
+    },
+    {
+      "id": "skl_vanguard_cleave",
+      "name": "Vanguard Cleave",
+      "trigger": "OnAction",
+      "activationChancePerMille": 450,
+      "cooldownRounds": 2,
+      "effects": [
+        {
+          "kind": "Damage",
+          "target": "FrontRowEnemy",
+          "maxTargets": 2,
+          "damageKind": "Physical",
+          "powerPerMille": 900,
+          "vfxId": "vfx_cleave_wide"
+        }
+      ]
+    },
+    {
+      "id": "skl_ashen_oath",
+      "name": "Ashen Oath",
+      "trigger": "OnBattleStart",
+      "effects": [
+        {
+          "kind": "Taunt",
+          "target": "Self",
+          "statusId": "st_taunt_ashen",
+          "durationRounds": 3,
+          "stackRule": "Refresh"
+        },
+        {
+          "kind": "StatModifier",
+          "target": "Self",
+          "statusId": "st_ashen_guard",
+          "modifiedStat": "Defense",
+          "amountPerMille": 300,
+          "durationRounds": 3,
+          "stackRule": "Refresh"
+        }
+      ]
+    },
+    {
+      "id": "skl_renew_oath",
+      "name": "Renew the Oath",
+      "trigger": "OnRoundStart",
+      "activationChancePerMille": 500,
+      "effects": [
+        {
+          "kind": "Taunt",
+          "target": "Self",
+          "statusId": "st_taunt_ashen",
+          "durationRounds": 2,
+          "stackRule": "Refresh"
+        }
+      ]
+    },
+    {
+      "id": "skl_lead_ember_zeal",
+      "name": "Ember Zeal",
+      "trigger": "OnBattleStart",
+      "isLeaderSkill": true,
+      "effects": [
+        {
+          "kind": "StatModifier",
+          "target": "AllAllies",
+          "statusId": "st_lead_ember_zeal",
+          "modifiedStat": "Attack",
+          "amountPerMille": 150,
+          "durationRounds": 99,
+          "stackRule": "Ignore"
+        }
+      ]
+    },
+    {
+      "id": "skl_lead_grave_watch",
+      "name": "Grave Watch",
+      "trigger": "OnBattleStart",
+      "isLeaderSkill": true,
+      "effects": [
+        {
+          "kind": "StatModifier",
+          "target": "AllAllies",
+          "statusId": "st_lead_grave_watch",
+          "modifiedStat": "Defense",
+          "amountPerMille": 180,
+          "durationRounds": 99,
+          "stackRule": "Ignore"
+        }
+      ]
+    },
+    {
+      "id": "skl_thorn_carapace",
+      "name": "Thorn Carapace",
+      "trigger": "OnAfterDamaged",
+      "activationChancePerMille": 600,
+      "effects": [
+        {
+          "kind": "Damage",
+          "target": "TriggerSource",
+          "damageKind": "True",
+          "scalingStat": "Defense",
+          "powerPerMille": 450,
+          "canCrit": false,
+          "vfxId": "vfx_thorns"
+        }
+      ]
+    },
+    {
+      "id": "skl_venom_dart",
+      "name": "Venom Dart",
+      "trigger": "OnAction",
+      "activationChancePerMille": 550,
+      "cooldownRounds": 1,
+      "effects": [
+        {
+          "kind": "Damage",
+          "target": "LowestHpEnemy",
+          "damageKind": "Physical",
+          "powerPerMille": 700
+        },
+        {
+          "kind": "DamageOverTime",
+          "target": "LowestHpEnemy",
+          "statusId": "st_venom",
+          "scalingStat": "Attack",
+          "amountPerMille": 220,
+          "durationRounds": 3,
+          "maxStacks": 3,
+          "stackRule": "Stack",
+          "chancePerMille": 800,
+          "vfxId": "vfx_venom"
+        }
+      ]
+    },
+    {
+      "id": "skl_shadow_lunge",
+      "name": "Shadow Lunge",
+      "trigger": "OnAction",
+      "activationChancePerMille": 400,
+      "cooldownRounds": 2,
+      "effects": [
+        {
+          "kind": "Damage",
+          "target": "LowestHpEnemy",
+          "damageKind": "Physical",
+          "powerPerMille": 620,
+          "hits": 3,
+          "ignoresTaunt": true,
+          "lifestealPerMille": 250,
+          "vfxId": "vfx_shadow_lunge"
+        }
+      ]
+    },
+    {
+      "id": "skl_mend",
+      "name": "Mend",
+      "trigger": "OnAction",
+      "activationChancePerMille": 600,
+      "effects": [
+        {
+          "kind": "Heal",
+          "target": "LowestHpAlly",
+          "scalingStat": "Magic",
+          "amountPerMille": 1600,
+          "vfxId": "vfx_mend"
+        }
+      ]
+    },
+    {
+      "id": "skl_tidal_hymn",
+      "name": "Tidal Hymn",
+      "trigger": "OnAction",
+      "activationChancePerMille": 350,
+      "cooldownRounds": 3,
+      "effects": [
+        {
+          "kind": "HealOverTime",
+          "target": "AllAllies",
+          "statusId": "st_tidal_regen",
+          "scalingStat": "Magic",
+          "amountPerMille": 450,
+          "durationRounds": 3,
+          "stackRule": "Refresh",
+          "vfxId": "vfx_tide_wash"
+        }
+      ]
+    },
+    {
+      "id": "skl_dawn_aegis",
+      "name": "Dawn Aegis",
+      "trigger": "OnAction",
+      "activationChancePerMille": 450,
+      "cooldownRounds": 2,
+      "effects": [
+        {
+          "kind": "Shield",
+          "target": "LowestHpAlly",
+          "statusId": "st_dawn_aegis",
+          "scalingStat": "Magic",
+          "amountPerMille": 1400,
+          "durationRounds": 3,
+          "vfxId": "vfx_aegis"
+        }
+      ]
+    },
+    {
+      "id": "skl_purify",
+      "name": "Purify",
+      "trigger": "OnAction",
+      "activationChancePerMille": 300,
+      "cooldownRounds": 2,
+      "effects": [
+        {
+          "kind": "Cleanse",
+          "target": "AllAllies",
+          "removeCount": 2,
+          "vfxId": "vfx_purify"
+        }
+      ]
+    },
+    {
+      "id": "skl_last_rite",
+      "name": "Last Rite",
+      "trigger": "OnAllyDown",
+      "activationChancePerMille": 400,
+      "cooldownRounds": 6,
+      "effects": [
+        {
+          "kind": "Revive",
+          "target": "LowestSlotDownedAlly",
+          "amountPerMille": 350,
+          "vfxId": "vfx_last_rite"
+        }
+      ]
+    },
+    {
+      "id": "skl_frost_nova",
+      "name": "Frost Nova",
+      "trigger": "OnAction",
+      "activationChancePerMille": 400,
+      "cooldownRounds": 3,
+      "effects": [
+        {
+          "kind": "Damage",
+          "target": "AllEnemies",
+          "damageKind": "Magical",
+          "powerPerMille": 650,
+          "vfxId": "vfx_frost_nova"
+        },
+        {
+          "kind": "StatModifier",
+          "target": "AllEnemies",
+          "statusId": "st_chilled",
+          "modifiedStat": "Speed",
+          "amountPerMille": -200,
+          "durationRounds": 2,
+          "chancePerMille": 700,
+          "stackRule": "Refresh"
+        }
+      ]
+    },
+    {
+      "id": "skl_ember_lance",
+      "name": "Ember Lance",
+      "trigger": "OnAction",
+      "activationChancePerMille": 500,
+      "cooldownRounds": 2,
+      "effects": [
+        {
+          "kind": "Damage",
+          "target": "HighestAttackEnemy",
+          "damageKind": "Magical",
+          "powerPerMille": 1700,
+          "ignoresTaunt": true,
+          "vfxId": "vfx_ember_lance"
+        }
+      ]
+    },
+    {
+      "id": "skl_stunning_blow",
+      "name": "Stunning Blow",
+      "trigger": "OnAction",
+      "activationChancePerMille": 350,
+      "cooldownRounds": 3,
+      "effects": [
+        {
+          "kind": "Damage",
+          "target": "FrontRowEnemy",
+          "damageKind": "Physical",
+          "powerPerMille": 800
+        },
+        {
+          "kind": "Stun",
+          "target": "FrontRowEnemy",
+          "statusId": "st_stun",
+          "durationRounds": 1,
+          "chancePerMille": 450,
+          "vfxId": "vfx_stun"
+        }
+      ]
+    },
+    {
+      "id": "skl_rend_wards",
+      "name": "Rend Wards",
+      "trigger": "OnAction",
+      "activationChancePerMille": 350,
+      "cooldownRounds": 2,
+      "effects": [
+        {
+          "kind": "Dispel",
+          "target": "AllEnemies",
+          "removeCount": 1,
+          "vfxId": "vfx_rend_wards"
+        },
+        {
+          "kind": "StatModifier",
+          "target": "AllEnemies",
+          "statusId": "st_hexed",
+          "modifiedStat": "Defense",
+          "amountPerMille": -220,
+          "durationRounds": 3,
+          "chancePerMille": 750,
+          "stackRule": "Refresh"
+        }
+      ]
+    },
+    {
+      "id": "skl_dying_curse",
+      "name": "Dying Curse",
+      "trigger": "OnDeath",
+      "effects": [
+        {
+          "kind": "DamageOverTime",
+          "target": "AllEnemies",
+          "statusId": "st_dying_curse",
+          "scalingStat": "Magic",
+          "amountPerMille": 300,
+          "durationRounds": 3,
+          "stackRule": "Refresh",
+          "vfxId": "vfx_curse"
+        }
+      ]
+    },
+    {
+      "id": "skl_hound_bite",
+      "name": "Bite",
+      "trigger": "OnAction",
+      "effects": [
+        {
+          "kind": "Damage",
+          "target": "RandomEnemy",
+          "damageKind": "Physical",
+          "powerPerMille": 950
+        }
+      ]
+    },
+    {
+      "id": "skl_hound_frenzy",
+      "name": "Frenzy",
+      "trigger": "OnAllyDown",
+      "activationChancePerMille": 1000,
+      "effects": [
+        {
+          "kind": "StatModifier",
+          "target": "Self",
+          "statusId": "st_frenzy",
+          "modifiedStat": "Attack",
+          "amountPerMille": 200,
+          "durationRounds": 99,
+          "maxStacks": 3,
+          "stackRule": "Stack"
+        }
+      ]
+    },
+    {
+      "id": "skl_archer_volley",
+      "name": "Bone Volley",
+      "trigger": "OnAction",
+      "activationChancePerMille": 500,
+      "cooldownRounds": 2,
+      "effects": [
+        {
+          "kind": "Damage",
+          "target": "RandomEnemy",
+          "maxTargets": 2,
+          "damageKind": "Physical",
+          "powerPerMille": 700,
+          "ignoresTaunt": true
+        }
+      ]
+    },
+    {
+      "id": "skl_swarm_gnaw",
+      "name": "Gnaw",
+      "trigger": "OnAction",
+      "effects": [
+        {
+          "kind": "Damage",
+          "target": "RandomEnemy",
+          "damageKind": "Physical",
+          "powerPerMille": 550,
+          "hits": 2
+        }
+      ]
+    },
+    {
+      "id": "skl_revenant_wrath",
+      "name": "Revenant Wrath",
+      "trigger": "OnAction",
+      "activationChancePerMille": 800,
+      "cooldownRounds": 1,
+      "initialCooldownRounds": 1,
+      "effects": [
+        {
+          "kind": "Damage",
+          "target": "AllEnemies",
+          "damageKind": "Magical",
+          "powerPerMille": 1000,
+          "vfxId": "vfx_revenant_wrath"
+        }
+      ]
+    },
+    {
+      "id": "skl_revenant_second_wind",
+      "name": "Second Wind",
+      "trigger": "OnAfterDamaged",
+      "activationChancePerMille": 200,
+      "cooldownRounds": 3,
+      "effects": [
+        {
+          "kind": "Heal",
+          "target": "Self",
+          "scalingStat": "Magic",
+          "amountPerMille": 900
+        }
+      ]
+    },
+    {
+      "id": "skl_acolyte_chant",
+      "name": "Crypt Chant",
+      "trigger": "OnAction",
+      "activationChancePerMille": 550,
+      "cooldownRounds": 2,
+      "effects": [
+        {
+          "kind": "Heal",
+          "target": "LowestHpAlly",
+          "scalingStat": "Magic",
+          "amountPerMille": 1300
+        }
+      ]
+    }
+  ]
+}

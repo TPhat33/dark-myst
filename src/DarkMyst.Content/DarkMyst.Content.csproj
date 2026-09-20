@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>DarkMyst.Content</AssemblyName>
+    <RootNamespace>DarkMyst.Content</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../DarkMyst.Combat/DarkMyst.Combat.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Unity ships the same library as com.unity.nuget.newtonsoft-json, so this DLL must NOT be
+      copied into Assets/Plugins/ — see tools/build-unity-plugins.sh.
+    -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+</Project>

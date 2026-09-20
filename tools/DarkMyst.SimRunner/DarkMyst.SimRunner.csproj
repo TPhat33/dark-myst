@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>simrunner</AssemblyName>
+    <RootNamespace>DarkMyst.SimRunner</RootNamespace>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/DarkMyst.Combat/DarkMyst.Combat.csproj" />
+    <ProjectReference Include="../../src/DarkMyst.Content/DarkMyst.Content.csproj" />
+  </ItemGroup>
+
+</Project>

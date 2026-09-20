@@ -1,0 +1,16 @@
+<Project>
+
+  <PropertyGroup>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <DebugType>portable</DebugType>
+    <Deterministic>true</Deterministic>
+    <!--
+      The combat rules must produce identical results on the server and inside Unity/IL2CPP.
+      Never enable floating-point fast math or non-deterministic optimizations here.
+    -->
+  </PropertyGroup>
+
+</Project>

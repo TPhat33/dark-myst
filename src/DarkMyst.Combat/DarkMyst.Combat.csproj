@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      netstandard2.1 so the exact same assembly runs on the ASP.NET Core server
+      and inside Unity 2021.2+ (Mono and IL2CPP).
+      This project must never take a NuGet dependency: Unity consumes it as a
+      plain DLL dropped into Assets/Plugins/DarkMyst/.
+    -->
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>DarkMyst.Combat</AssemblyName>
+    <RootNamespace>DarkMyst.Combat</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+</Project>

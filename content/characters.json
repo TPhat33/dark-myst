@@ -1,0 +1,232 @@
+{
+  "characters": [
+    {
+      "id": "chr_ashen_knight_i",
+      "lineId": "line_ashen_knight",
+      "name": "Ashen Knight",
+      "affinity": "Ember",
+      "role": "Vanguard",
+      "rarity": 3,
+      "evolveStage": 1,
+      "nextStageId": "chr_ashen_knight_ii",
+      "baseStats": {
+        "maxHp": 1320, "attack": 132, "magic": 40, "defense": 104,
+        "resist": 62, "speed": 96, "critRate": 50, "critDamage": 0
+      },
+      "growthPerLevel": {
+        "maxHp": 66, "attack": 6, "magic": 1, "defense": 5,
+        "resist": 3, "speed": 1, "critRate": 1, "critDamage": 0
+      },
+      "skillIds": ["skl_vanguard_cleave", "skl_basic_strike", "skl_ashen_oath", "skl_lead_ember_zeal"],
+      "flavor": "Swore an oath over a burning chapel. The chapel is ash; the oath is not."
+    },
+    {
+      "id": "chr_ashen_knight_ii",
+      "lineId": "line_ashen_knight",
+      "name": "Ashen Templar",
+      "affinity": "Ember",
+      "role": "Vanguard",
+      "rarity": 4,
+      "evolveStage": 2,
+      "nextStageId": "chr_ashen_knight_iii",
+      "baseStats": {
+        "maxHp": 1980, "attack": 186, "magic": 58, "defense": 152,
+        "resist": 92, "speed": 100, "critRate": 60, "critDamage": 100
+      },
+      "growthPerLevel": {
+        "maxHp": 74, "attack": 7, "magic": 1, "defense": 6,
+        "resist": 4, "speed": 1, "critRate": 1, "critDamage": 2
+      },
+      "skillIds": [
+        "skl_vanguard_cleave", "skl_basic_strike", "skl_ashen_oath",
+        "skl_renew_oath", "skl_lead_ember_zeal"
+      ],
+      "flavor": "The oath has started answering back."
+    },
+    {
+      "id": "chr_ashen_knight_iii",
+      "lineId": "line_ashen_knight",
+      "name": "Ashen Revenant Lord",
+      "affinity": "Ember",
+      "role": "Vanguard",
+      "rarity": 5,
+      "evolveStage": 3,
+      "baseStats": {
+        "maxHp": 3100, "attack": 268, "magic": 84, "defense": 214,
+        "resist": 130, "speed": 106, "critRate": 80, "critDamage": 200
+      },
+      "growthPerLevel": {
+        "maxHp": 86, "attack": 9, "magic": 2, "defense": 7,
+        "resist": 5, "speed": 1, "critRate": 1, "critDamage": 3
+      },
+      "skillIds": [
+        "skl_vanguard_cleave", "skl_stunning_blow", "skl_basic_strike",
+        "skl_ashen_oath", "skl_renew_oath", "skl_thorn_carapace", "skl_lead_ember_zeal"
+      ],
+      "flavor": "What walks out of the ash is not what walked in."
+    },
+
+    {
+      "id": "chr_grave_warden_i",
+      "lineId": "line_grave_warden",
+      "name": "Grave Warden",
+      "affinity": "Umbral",
+      "role": "Guard",
+      "rarity": 3,
+      "evolveStage": 1,
+      "nextStageId": "chr_grave_warden_ii",
+      "baseStats": {
+        "maxHp": 1520, "attack": 106, "magic": 44, "defense": 128,
+        "resist": 88, "speed": 84, "critRate": 30, "critDamage": 0
+      },
+      "growthPerLevel": {
+        "maxHp": 76, "attack": 4, "magic": 1, "defense": 6,
+        "resist": 4, "speed": 1, "critRate": 0, "critDamage": 0
+      },
+      "skillIds": ["skl_basic_strike", "skl_thorn_carapace", "skl_lead_grave_watch"],
+      "flavor": "Counts the dead every night. The number keeps changing."
+    },
+    {
+      "id": "chr_grave_warden_ii",
+      "lineId": "line_grave_warden",
+      "name": "Grave Sentinel",
+      "affinity": "Umbral",
+      "role": "Guard",
+      "rarity": 4,
+      "evolveStage": 2,
+      "baseStats": {
+        "maxHp": 2280, "attack": 148, "magic": 62, "defense": 186,
+        "resist": 128, "speed": 88, "critRate": 40, "critDamage": 0
+      },
+      "growthPerLevel": {
+        "maxHp": 84, "attack": 5, "magic": 2, "defense": 7,
+        "resist": 5, "speed": 1, "critRate": 1, "critDamage": 0
+      },
+      "skillIds": [
+        "skl_stunning_blow", "skl_basic_strike", "skl_thorn_carapace",
+        "skl_dying_curse", "skl_lead_grave_watch"
+      ],
+      "flavor": "Stopped counting. Started collecting."
+    },
+
+    {
+      "id": "chr_thorn_maiden_i",
+      "lineId": "line_thorn_maiden",
+      "name": "Thorn Maiden",
+      "affinity": "Verdant",
+      "role": "Bruiser",
+      "rarity": 2,
+      "evolveStage": 1,
+      "baseStats": {
+        "maxHp": 1180, "attack": 124, "magic": 54, "defense": 92,
+        "resist": 70, "speed": 108, "critRate": 70, "critDamage": 50
+      },
+      "growthPerLevel": {
+        "maxHp": 58, "attack": 6, "magic": 2, "defense": 4,
+        "resist": 3, "speed": 2, "critRate": 1, "critDamage": 1
+      },
+      "skillIds": ["skl_venom_dart", "skl_basic_strike", "skl_thorn_carapace"],
+      "flavor": "Every garden she tends outlives its gardener."
+    },
+
+    {
+      "id": "chr_tide_oracle_i",
+      "lineId": "line_tide_oracle",
+      "name": "Tide Oracle",
+      "affinity": "Tide",
+      "role": "Mender",
+      "rarity": 4,
+      "evolveStage": 1,
+      "baseStats": {
+        "maxHp": 1060, "attack": 52, "magic": 148, "defense": 66,
+        "resist": 112, "speed": 102, "critRate": 40, "critDamage": 0
+      },
+      "growthPerLevel": {
+        "maxHp": 52, "attack": 2, "magic": 8, "defense": 3,
+        "resist": 5, "speed": 1, "critRate": 0, "critDamage": 0
+      },
+      "skillIds": ["skl_tidal_hymn", "skl_mend", "skl_basic_bolt", "skl_purify"],
+      "flavor": "Reads futures in standing water. Rarely likes them."
+    },
+
+    {
+      "id": "chr_dawn_cantor_i",
+      "lineId": "line_dawn_cantor",
+      "name": "Dawn Cantor",
+      "affinity": "Radiant",
+      "role": "Mender",
+      "rarity": 4,
+      "evolveStage": 1,
+      "baseStats": {
+        "maxHp": 1100, "attack": 56, "magic": 140, "defense": 72,
+        "resist": 118, "speed": 94, "critRate": 40, "critDamage": 0
+      },
+      "growthPerLevel": {
+        "maxHp": 54, "attack": 2, "magic": 8, "defense": 3,
+        "resist": 5, "speed": 1, "critRate": 0, "critDamage": 0
+      },
+      "skillIds": ["skl_last_rite", "skl_dawn_aegis", "skl_mend", "skl_basic_bolt"],
+      "flavor": "Sings the sun up. Nobody has told her it would rise anyway."
+    },
+
+    {
+      "id": "chr_ember_adept_i",
+      "lineId": "line_ember_adept",
+      "name": "Ember Adept",
+      "affinity": "Ember",
+      "role": "Breaker",
+      "rarity": 3,
+      "evolveStage": 1,
+      "baseStats": {
+        "maxHp": 960, "attack": 58, "magic": 158, "defense": 58,
+        "resist": 88, "speed": 112, "critRate": 80, "critDamage": 100
+      },
+      "growthPerLevel": {
+        "maxHp": 46, "attack": 2, "magic": 9, "defense": 2,
+        "resist": 4, "speed": 2, "critRate": 1, "critDamage": 2
+      },
+      "skillIds": ["skl_ember_lance", "skl_frost_nova", "skl_basic_bolt"],
+      "flavor": "Learned the second-easiest way to set something alight."
+    },
+
+    {
+      "id": "chr_pale_stalker_i",
+      "lineId": "line_pale_stalker",
+      "name": "Pale Stalker",
+      "affinity": "Umbral",
+      "role": "Assassin",
+      "rarity": 3,
+      "evolveStage": 1,
+      "baseStats": {
+        "maxHp": 900, "attack": 156, "magic": 46, "defense": 62,
+        "resist": 58, "speed": 132, "critRate": 140, "critDamage": 250
+      },
+      "growthPerLevel": {
+        "maxHp": 44, "attack": 8, "magic": 1, "defense": 2,
+        "resist": 2, "speed": 2, "critRate": 2, "critDamage": 4
+      },
+      "skillIds": ["skl_shadow_lunge", "skl_basic_strike"],
+      "flavor": "Arrives before the sound of arriving."
+    },
+
+    {
+      "id": "chr_mire_hexer_i",
+      "lineId": "line_mire_hexer",
+      "name": "Mire Hexer",
+      "affinity": "Verdant",
+      "role": "Hexer",
+      "rarity": 2,
+      "evolveStage": 1,
+      "baseStats": {
+        "maxHp": 1020, "attack": 64, "magic": 128, "defense": 68,
+        "resist": 94, "speed": 98, "critRate": 40, "critDamage": 0
+      },
+      "growthPerLevel": {
+        "maxHp": 50, "attack": 2, "magic": 7, "defense": 3,
+        "resist": 4, "speed": 1, "critRate": 0, "critDamage": 0
+      },
+      "skillIds": ["skl_rend_wards", "skl_venom_dart", "skl_basic_bolt", "skl_dying_curse"],
+      "flavor": "Trades in small curses. Volume is where the money is."
+    }
+  ]
+}

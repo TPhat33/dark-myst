@@ -1,0 +1,44 @@
+{
+  "maxLevelByStage": [20, 40, 60],
+
+  "evolve": {
+    "essencePerLevel": 10,
+    "essencePerRarityStep": 50,
+    "essencePerStage": 100,
+    "sameLineBonusEssence": 20,
+
+    "sameLineEssencePerMille": 1000,
+    "sameAffinityEssencePerMille": 500,
+    "offAffinityEssencePerMille": 0,
+
+    "essencePerBonusPerMille": 10,
+    "inheritedBonusCapPerMille": 300,
+    "inheritedStats": ["MaxHp", "Attack", "Magic", "Defense", "Resist"],
+
+    "focuses": {
+      "Offense": { "Attack": 120, "CritDamage": 60, "Defense": -60 },
+      "Guard":   { "MaxHp": 120, "Defense": 80, "Speed": -60 },
+      "Swift":   { "Speed": 100, "CritRate": 250, "MaxHp": -80 },
+      "Arcane":  { "Magic": 120, "Resist": 60, "Attack": -60 }
+    },
+
+    "requirements": [
+      {
+        "fromStage": 1,
+        "requiredLevel": 20,
+        "fodderCount": 2,
+        "sameLineFodderRequired": 0,
+        "gold": 5000,
+        "materials": { "mat_ashen_sigil": 3 }
+      },
+      {
+        "fromStage": 2,
+        "requiredLevel": 40,
+        "fodderCount": 3,
+        "sameLineFodderRequired": 1,
+        "gold": 25000,
+        "materials": { "mat_ashen_sigil": 8, "mat_myst_core": 2 }
+      }
+    ]
+  }
+}

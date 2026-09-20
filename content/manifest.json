@@ -1,0 +1,9 @@
+{
+  "contentVersion": "0.1.0",
+  "rulesVersion": "1.0.0",
+  "skills": "skills.json",
+  "characters": "characters.json",
+  "enemies": "enemies.json",
+  "progression": "progression.json",
+  "encounters": "encounters.json"
+}

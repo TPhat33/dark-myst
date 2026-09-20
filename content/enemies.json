@@ -1,0 +1,57 @@
+{
+  "enemies": [
+    {
+      "id": "enm_gloom_hound",
+      "name": "Gloom Hound",
+      "affinity": "Umbral",
+      "stats": {
+        "maxHp": 760, "attack": 96, "magic": 20, "defense": 54,
+        "resist": 40, "speed": 118, "critRate": 60, "critDamage": 0
+      },
+      "skillIds": ["skl_hound_bite", "skl_hound_frenzy"]
+    },
+    {
+      "id": "enm_bone_archer",
+      "name": "Bone Archer",
+      "affinity": "Neutral",
+      "stats": {
+        "maxHp": 640, "attack": 108, "magic": 24, "defense": 42,
+        "resist": 44, "speed": 104, "critRate": 80, "critDamage": 100
+      },
+      "skillIds": ["skl_archer_volley", "skl_basic_strike"]
+    },
+    {
+      "id": "enm_rot_swarm",
+      "name": "Rot Swarm",
+      "affinity": "Verdant",
+      "stats": {
+        "maxHp": 980, "attack": 78, "magic": 30, "defense": 70,
+        "resist": 52, "speed": 86, "critRate": 20, "critDamage": 0
+      },
+      "skillIds": ["skl_swarm_gnaw", "skl_venom_dart"]
+    },
+    {
+      "id": "enm_crypt_acolyte",
+      "name": "Crypt Acolyte",
+      "affinity": "Umbral",
+      "stats": {
+        "maxHp": 720, "attack": 44, "magic": 116, "defense": 52,
+        "resist": 92, "speed": 92, "critRate": 20, "critDamage": 0
+      },
+      "skillIds": ["skl_acolyte_chant", "skl_basic_bolt"]
+    },
+    {
+      "id": "enm_ashen_revenant",
+      "name": "The Ashen Revenant",
+      "affinity": "Ember",
+      "stats": {
+        "maxHp": 9400, "attack": 330, "magic": 305, "defense": 190,
+        "resist": 175, "speed": 118, "critRate": 90, "critDamage": 150
+      },
+      "skillIds": [
+        "skl_revenant_wrath", "skl_stunning_blow", "skl_basic_strike",
+        "skl_revenant_second_wind", "skl_dying_curse"
+      ]
+    }
+  ]
+}
