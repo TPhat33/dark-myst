@@ -21,6 +21,7 @@ const loading = ref(true)
 const loadError = ref<string | null>(null)
 
 const currentVersion = ref<string>('')
+const rollbackableVersions = ref<string[]>([])
 const originalCharacters = ref<CharacterData[]>([])
 const editable = reactive<{ characters: CharacterData[] }>({ characters: [] })
 
@@ -71,6 +72,7 @@ async function loadCurrent() {
   const result = await handleUnauthorized(() => getCurrent(props.adminToken))
   if (result) {
     currentVersion.value = result.version
+    rollbackableVersions.value = result.rollbackableVersions
     originalCharacters.value = cloneAll(result.characters)
     editable.characters = cloneAll(result.characters)
     if (!selectedId.value && editable.characters.length > 0) {
@@ -253,21 +255,30 @@ onMounted(async () => {
           <li v-for="p in publishProblems" :key="p">{{ p }}</li>
         </ul>
 
-        <h3>Version history</h3>
+        <h3>Roll back to</h3>
+        <ul class="version-list" data-testid="rollback-list">
+          <li v-for="v in rollbackableVersions" :key="v">
+            <span class="version-tag">{{ v }}</span>
+            <button
+              :disabled="rollingBackVersion === v"
+              :data-testid="`rollback-${v}`"
+              @click="runRollback(v)"
+            >
+              {{ rollingBackVersion === v ? 'Rolling back…' : 'Roll back to this' }}
+            </button>
+          </li>
+          <li v-if="rollbackableVersions.length === 0" class="muted">
+            Nothing to roll back to yet — publish at least once first.
+          </li>
+        </ul>
+
+        <h3>Publish/rollback log</h3>
         <p v-if="versionsLoading" class="muted">Loading…</p>
         <ul v-else class="version-list" data-testid="version-list">
           <li v-for="v in versions" :key="v.version + v.publishedAt">
             <span class="version-tag">{{ v.version }}</span>
             <span class="version-kind">{{ v.kind }}</span>
             <span v-if="v.notes" class="muted"> — {{ v.notes }}</span>
-            <button
-              v-if="v.version !== currentVersion"
-              :disabled="rollingBackVersion === v.version"
-              :data-testid="`rollback-${v.version}`"
-              @click="runRollback(v.version)"
-            >
-              {{ rollingBackVersion === v.version ? 'Rolling back…' : 'Roll back to this' }}
-            </button>
           </li>
           <li v-if="versions.length === 0" class="muted">No publishes yet.</li>
         </ul>

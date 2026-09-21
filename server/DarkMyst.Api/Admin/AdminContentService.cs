@@ -61,7 +61,27 @@ namespace DarkMyst.Api.Admin
         {
             ContentPack pack = _registry.Latest;
             List<CharacterData> characters = pack.Characters.OrderBy(c => c.Id, StringComparer.Ordinal).ToList();
-            return new AdminContentCurrentResponse(pack.Version, pack.Manifest.RulesVersion, characters);
+            List<string> rollbackable = ListSnapshotVersions()
+                .Where(v => !string.Equals(v, pack.Version, StringComparison.Ordinal))
+                .OrderByDescending(v => v, StringComparer.Ordinal)
+                .ToList();
+
+            return new AdminContentCurrentResponse(pack.Version, pack.Manifest.RulesVersion, characters, rollbackable);
+        }
+
+        /// <summary>Every version with a full snapshot under <c>content/_history/</c> — every
+        /// version this tool can actually restore <c>content/</c> to, whether or not it has its own
+        /// publish/rollback audit row (the very first version this tool was ever run against never
+        /// does, since nothing published <em>it</em> — see <see cref="AdminContentCurrentResponse"/>
+        /// remarks).</summary>
+        private List<string> ListSnapshotVersions()
+        {
+            if (!Directory.Exists(HistoryRoot))
+            {
+                return new List<string>();
+            }
+
+            return Directory.GetDirectories(HistoryRoot).Select(Path.GetFileName).ToList();
         }
 
         public AdminValidateResponse Validate(List<CharacterData> characters)

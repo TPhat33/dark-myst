@@ -159,6 +159,13 @@ namespace DarkMyst.Api.Tests
                 body: new { characters = before.Characters, notes = "temporary defense bump" });
             var published = await publishResponse.Content.ReadFromJsonAsync<AdminPublishResultDto>(Json.Options);
 
+            // The version we just published *from* is rollback-eligible even though nothing ever
+            // published *it* (so it has no row of its own in the audit log) — publish snapshots the
+            // outgoing version before overwriting it (AdminContentService.PublishAsync).
+            var midResponse = await _fixture.Client.AdminGet("/admin/content/current", token);
+            var mid = await midResponse.Content.ReadFromJsonAsync<AdminContentCurrentDto>(Json.Options);
+            Assert.Contains(originalVersion, mid.RollbackableVersions);
+
             var rollbackResponse = await _fixture.Client.AdminPost(
                 "/admin/content/rollback", token, idempotencyKey: "rollback-" + System.Guid.NewGuid(),
                 body: new { targetVersion = originalVersion, notes = "revert the defense bump" });
@@ -215,7 +222,7 @@ namespace DarkMyst.Api.Tests
         // Mirrors the shape of server/DarkMyst.Api/Admin/AdminDtos.cs closely enough to deserialize
         // responses; kept local to the test project rather than shared, the same way other test
         // classes in this project declare their own small response records.
-        private sealed record AdminContentCurrentDto(string Version, string RulesVersion, List<CharacterData> Characters);
+        private sealed record AdminContentCurrentDto(string Version, string RulesVersion, List<CharacterData> Characters, List<string> RollbackableVersions);
         private sealed record AdminValidateResultDto(bool Valid, List<string> Errors);
         private sealed record AdminPublishResultDto(string Version, string PreviousVersion, int CharacterCount, System.DateTimeOffset PublishedAt);
         private sealed record AdminRollbackResultDto(string Version, string PreviousVersion, System.DateTimeOffset PublishedAt);

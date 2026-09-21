@@ -67,7 +67,26 @@ builder.Services.AddScoped<BattleService>();
 builder.Services.AddScoped<AdminAccountService>();
 builder.Services.AddScoped<AdminContentService>();
 
+// The admin tool (admin/, a Vite dev server or a static build) is served from a different origin
+// than this API, so a browser calling /admin/* needs CORS allowed explicitly — nothing else in
+// this API needs it, since the game client talks to Unity's own HTTP stack, not a browser.
+// Empty by default (appsettings.json): no origin is allowed anywhere this section is not
+// configured. appsettings.Development.json lists the admin dev server's own ports.
+string[] corsOrigins = builder.Configuration.GetSection("Cors:AdminOrigins").Get<string[]>() ?? Array.Empty<string>();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AdminFrontend", policy =>
+    {
+        if (corsOrigins.Length > 0)
+        {
+            policy.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod();
+        }
+    });
+});
+
 var app = builder.Build();
+
+app.UseCors("AdminFrontend");
 
 // Applying migrations at startup (rather than requiring a separate operational step) is the
 // simplest thing that satisfies acceptance criterion 4 ("migrations apply cleanly to an empty

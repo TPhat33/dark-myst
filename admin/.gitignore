@@ -8,3 +8,4 @@ blob-report
 playwright/.cache
 .vite
 *.tsbuildinfo
+e2e/.content-dir

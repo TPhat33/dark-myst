@@ -40,6 +40,10 @@ export interface AdminContentCurrent {
   version: string
   rulesVersion: string
   characters: CharacterData[]
+  /** Every version content/ can actually be rolled back to right now (has a content/_history/
+   * snapshot), including the original baseline this tool was first pointed at — which never has
+   * its own row in the publish/rollback audit log, since nothing published *it*. */
+  rollbackableVersions: string[]
 }
 
 export interface AdminValidateResult {

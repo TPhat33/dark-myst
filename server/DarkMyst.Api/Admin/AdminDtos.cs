@@ -13,7 +13,14 @@ namespace DarkMyst.Api.Admin
     // GET /admin/content/current
     // ------------------------------------------------------------------
 
-    public sealed record AdminContentCurrentResponse(string Version, string RulesVersion, List<CharacterData> Characters);
+    /// <summary><c>RollbackableVersions</c> is every version this process can still restore
+    /// content/ to — i.e. every <c>content/_history/&lt;version&gt;/</c> snapshot, not just the
+    /// ones with a publish/rollback audit row (see the "GET /admin/content/versions" record below).
+    /// This includes the very first version the tool was ever pointed at: publishing snapshots the
+    /// *outgoing* version too, before overwriting it, so even a baseline that predates this tool
+    /// entirely becomes reachable the moment anything is published on top of it.</summary>
+    public sealed record AdminContentCurrentResponse(
+        string Version, string RulesVersion, List<CharacterData> Characters, List<string> RollbackableVersions);
 
     // ------------------------------------------------------------------
     // POST /admin/content/validate, POST /admin/content/publish
