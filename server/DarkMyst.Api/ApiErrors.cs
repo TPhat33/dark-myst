@@ -5,6 +5,7 @@ using DarkMyst.Api.Evolve;
 using DarkMyst.Api.Expeditions;
 using DarkMyst.Api.Idempotency;
 using DarkMyst.Api.Teams;
+using DarkMyst.Content;
 
 namespace DarkMyst.Api
 {
@@ -39,6 +40,12 @@ namespace DarkMyst.Api
 
                 case ContentVersionUnavailableException versionUnavailable:
                     return (409, new { error = "content_version_unavailable", version = versionUnavailable.Version });
+
+                // Raised by AdminContentService when edited content fails the same
+                // ContentPack.Validate() the server and CI already run. There is no override flag
+                // that lets a publish skip this — see docs/11-admin-spec.md.
+                case ContentException contentInvalid:
+                    return (422, new { error = "content_invalid", problems = contentInvalid.Problems });
 
                 case IdempotencyKeyReusedException keyReused:
                     return (409, new { error = "idempotency_key_reused", message = keyReused.Message });

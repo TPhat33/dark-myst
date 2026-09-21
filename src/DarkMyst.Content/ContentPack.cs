@@ -11,9 +11,19 @@ namespace DarkMyst.Content
     /// <summary>Raised when a content pack is missing something the game needs.</summary>
     public sealed class ContentException : Exception
     {
-        public ContentException(string message) : base(message)
+        public ContentException(string message) : this(message, new List<string> { message })
         {
         }
+
+        /// <summary>Used by <see cref="ContentPack.Validate"/> so a caller that wants each problem
+        /// on its own (the admin publish endpoint, so a designer sees a list, not one long string)
+        /// does not have to re-parse <see cref="Exception.Message"/>.</summary>
+        public ContentException(string message, IReadOnlyList<string> problems) : base(message)
+        {
+            Problems = problems ?? new List<string> { message };
+        }
+
+        public IReadOnlyList<string> Problems { get; }
     }
 
     /// <summary>
@@ -456,7 +466,8 @@ namespace DarkMyst.Content
             {
                 throw new ContentException(
                     "Content pack " + Manifest.ContentVersion + " is invalid:" + Environment.NewLine
-                    + " - " + string.Join(Environment.NewLine + " - ", problems));
+                    + " - " + string.Join(Environment.NewLine + " - ", problems),
+                    problems);
             }
         }
 

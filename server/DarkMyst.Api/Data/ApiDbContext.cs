@@ -38,6 +38,10 @@ namespace DarkMyst.Api.Data
 
         public DbSet<BattleChecksumMismatchEntity> BattleChecksumMismatches => Set<BattleChecksumMismatchEntity>();
 
+        public DbSet<AdminAccountEntity> AdminAccounts => Set<AdminAccountEntity>();
+
+        public DbSet<ContentPublishEntity> ContentPublishes => Set<ContentPublishEntity>();
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<AccountEntity>(b =>
@@ -140,6 +144,25 @@ namespace DarkMyst.Api.Data
                 b.ToTable("battle_checksum_mismatches");
                 b.HasKey(x => x.Id);
                 b.Property(x => x.Id).UseIdentityAlwaysColumn();
+            });
+
+            modelBuilder.Entity<AdminAccountEntity>(b =>
+            {
+                b.ToTable("admin_accounts");
+                b.HasKey(x => x.Id);
+                // Looked up on every admin request (Auth/AdminAuth.cs) — same shape as the player
+                // accounts.access_token index, but a completely separate table: a player's token
+                // is never a row here, and an admin's token is never a row in accounts.
+                b.HasIndex(x => x.AccessToken).IsUnique();
+            });
+
+            modelBuilder.Entity<ContentPublishEntity>(b =>
+            {
+                b.ToTable("content_publishes");
+                b.HasKey(x => x.Id);
+                b.Property(x => x.Id).UseIdentityAlwaysColumn();
+                b.Property(x => x.Kind).HasConversion<string>();
+                b.HasIndex(x => x.CreatedAt);
             });
         }
     }

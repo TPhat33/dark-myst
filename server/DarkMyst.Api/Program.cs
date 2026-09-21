@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using DarkMyst.Api;
 using DarkMyst.Api.Accounts;
+using DarkMyst.Api.Admin;
 using DarkMyst.Api.Battles;
 using DarkMyst.Api.Content;
 using DarkMyst.Api.Data;
@@ -49,8 +50,10 @@ builder.Services.AddDbContext<ApiDbContext>(o => o
     .UseNpgsql(connectionString)
     .UseSnakeCaseNamingConvention());
 
+string contentDirectory = ContentLocator.Locate(builder.Configuration);
+builder.Services.AddSingleton(new ContentRootPath(contentDirectory));
 builder.Services.AddSingleton(sp => ContentPackRegistry.LoadSingleDirectory(
-    ContentLocator.Locate(builder.Configuration), sp.GetRequiredService<ILogger<ContentPackRegistry>>()));
+    contentDirectory, sp.GetRequiredService<ILogger<ContentPackRegistry>>()));
 
 builder.Services.AddSingleton<IIdentityProvider, StubIdentityProvider>();
 builder.Services.AddScoped<AccountService>();
@@ -61,6 +64,8 @@ builder.Services.AddScoped<EvolveService>();
 builder.Services.AddScoped<TeamService>();
 builder.Services.AddScoped<ExpeditionService>();
 builder.Services.AddScoped<BattleService>();
+builder.Services.AddScoped<AdminAccountService>();
+builder.Services.AddScoped<AdminContentService>();
 
 var app = builder.Build();
 
@@ -295,6 +300,82 @@ app.MapPost("/battle/run", async (HttpContext http, ApiDbContext db, BattleServi
     (RunBattleRequest request, _) = await ApiIo.ReadBodyAsync<RunBattleRequest>(http.Request, jsonOptions, ct);
     RunBattleResponse response = await battles.RunAsync(account.Id, request, ct);
     return Results.Ok(response);
+});
+
+// ---------------------------------------------------------------------------
+// Admin — the content editor/publish/rollback tool (docs/11-admin-spec.md). Every endpoint here
+// requires AdminAuth, a gate completely separate from AccountAuth's player bearer token (see
+// Auth/AdminAuth.cs remarks): different header, different table, so a player token can never
+// reach these. /admin/bootstrap itself is gated the same way /debug/grant-* is below — outside
+// Development it requires Admin:AllowBootstrap, and appsettings.json ships that false.
+// ---------------------------------------------------------------------------
+
+if (app.Environment.IsDevelopment() || builder.Configuration.GetValue<bool>("Admin:AllowBootstrap"))
+{
+    app.MapPost("/admin/bootstrap", async (HttpContext http, AdminAccountService admins, CancellationToken ct) =>
+    {
+        (BootstrapRequest request, _) = await ApiIo.ReadBodyAsync<BootstrapRequest>(http.Request, jsonOptions, ct);
+        AdminAccountEntity admin = await admins.BootstrapAsync(request?.Name, ct);
+        return Results.Ok(new { adminId = admin.Id, name = admin.Name, accessToken = admin.AccessToken });
+    });
+}
+
+app.MapGet("/admin/content/current", async (HttpContext http, ApiDbContext db, AdminContentService content, CancellationToken ct) =>
+{
+    await AdminAuth.RequireAdminAsync(http, db, ct);
+    return Results.Ok(content.GetCurrent());
+});
+
+app.MapGet("/admin/content/versions", async (HttpContext http, ApiDbContext db, AdminContentService content, CancellationToken ct) =>
+{
+    await AdminAuth.RequireAdminAsync(http, db, ct);
+    return Results.Ok(await content.ListVersionsAsync(ct));
+});
+
+app.MapGet("/admin/content/diff", async (string from, string to, HttpContext http, ApiDbContext db,
+    AdminContentService content, CancellationToken ct) =>
+{
+    await AdminAuth.RequireAdminAsync(http, db, ct);
+    return Results.Ok(content.Diff(from, to));
+});
+
+app.MapPost("/admin/content/validate", async (HttpContext http, ApiDbContext db, AdminContentService content, CancellationToken ct) =>
+{
+    await AdminAuth.RequireAdminAsync(http, db, ct);
+    (AdminContentEditRequest request, _) = await ApiIo.ReadBodyAsync<AdminContentEditRequest>(http.Request, jsonOptions, ct);
+    return Results.Ok(content.Validate(request.Characters));
+});
+
+app.MapPost("/admin/content/publish", async (HttpContext http, ApiDbContext db, AdminContentService content,
+    IdempotencyService idempotency, CancellationToken ct) =>
+{
+    AdminAccountEntity admin = await AdminAuth.RequireAdminAsync(http, db, ct);
+    (AdminContentEditRequest request, string raw) = await ApiIo.ReadBodyAsync<AdminContentEditRequest>(http.Request, jsonOptions, ct);
+    string key = ApiIo.RequireIdempotencyKey(http.Request);
+
+    IdempotencyOutcome outcome = await idempotency.ExecuteAsync(admin.Id, "admin/content/publish", key, raw, async () =>
+    {
+        AdminPublishResponse response = await content.PublishAsync(admin.Id, request.Characters, request.Notes, ct);
+        return new IdempotentOperationResult(200, response);
+    }, ct);
+
+    return ApiIo.ToResult(outcome);
+});
+
+app.MapPost("/admin/content/rollback", async (HttpContext http, ApiDbContext db, AdminContentService content,
+    IdempotencyService idempotency, CancellationToken ct) =>
+{
+    AdminAccountEntity admin = await AdminAuth.RequireAdminAsync(http, db, ct);
+    (AdminRollbackRequest request, string raw) = await ApiIo.ReadBodyAsync<AdminRollbackRequest>(http.Request, jsonOptions, ct);
+    string key = ApiIo.RequireIdempotencyKey(http.Request);
+
+    IdempotencyOutcome outcome = await idempotency.ExecuteAsync(admin.Id, "admin/content/rollback", key, raw, async () =>
+    {
+        AdminRollbackResponse response = await content.RollbackAsync(admin.Id, request.TargetVersion, request.Notes, ct);
+        return new IdempotentOperationResult(200, response);
+    }, ct);
+
+    return ApiIo.ToResult(outcome);
 });
 
 // ---------------------------------------------------------------------------
