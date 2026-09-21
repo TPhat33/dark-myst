@@ -18,12 +18,19 @@ namespace DarkMyst.Api.Debug
     /// table for an unbounded number of tries. These three endpoints are that stand-in, gated to
     /// <c>Development</c> (or an explicit <c>Debug:AllowGrants</c> opt-in) in Program.cs so they
     /// never ship as a real feature — see docs/10-backend-spec.md "deliberately deferred".
+    /// <para>
+    /// Each method here is called from inside <c>IdempotencyService.ExecuteAsync</c> exactly like
+    /// every other mutating endpoint (Program.cs) — the <paramref name="idempotencyKey"/> is
+    /// threaded through to <see cref="LedgerService"/> purely for the audit trail (same as
+    /// <c>EvolveService</c> does); the replay guarantee itself comes entirely from the caller's
+    /// <c>ExecuteAsync</c> wrapper, not from anything in this class.
+    /// </para>
     /// </summary>
     public static class DebugGrants
     {
         public static async Task<OwnedCharacterEntity> GrantCharacterAsync(
             ApiDbContext db, ContentPackRegistry content, LedgerService ledger,
-            string accountId, GrantCharacterRequest request, CancellationToken ct)
+            string accountId, GrantCharacterRequest request, string idempotencyKey, CancellationToken ct)
         {
             ContentPack pack = content.Latest;
             CharacterData character = pack.GetCharacter(request.CharacterId); // throws ContentException if unknown
@@ -47,21 +54,23 @@ namespace DarkMyst.Api.Debug
             };
 
             db.Characters.Add(entity);
-            ledger.RecordCharacterMovement(accountId, entity.InstanceId, +1, "debug:grant-character", idempotencyKey: null);
+            ledger.RecordCharacterMovement(accountId, entity.InstanceId, +1, "debug:grant-character", idempotencyKey);
             await db.SaveChangesAsync(ct);
             return entity;
         }
 
-        public static async Task GrantGoldAsync(ApiDbContext db, LedgerService ledger, string accountId, int amount, CancellationToken ct)
+        public static async Task GrantGoldAsync(
+            ApiDbContext db, LedgerService ledger, string accountId, int amount, string idempotencyKey, CancellationToken ct)
         {
             AccountEntity account = await db.Accounts.FindAsync(new object[] { accountId }, ct);
-            ledger.ApplyGold(account, amount, "debug:grant-gold", idempotencyKey: null);
+            ledger.ApplyGold(account, amount, "debug:grant-gold", idempotencyKey);
             await db.SaveChangesAsync(ct);
         }
 
-        public static Task GrantMaterialAsync(LedgerService ledger, string accountId, string materialId, int amount, CancellationToken ct)
+        public static Task GrantMaterialAsync(
+            LedgerService ledger, string accountId, string materialId, int amount, string idempotencyKey, CancellationToken ct)
         {
-            return ledger.ApplyMaterialAsync(accountId, materialId, amount, "debug:grant-material", idempotencyKey: null, ct);
+            return ledger.ApplyMaterialAsync(accountId, materialId, amount, "debug:grant-material", idempotencyKey, ct);
         }
     }
 }

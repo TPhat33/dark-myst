@@ -45,10 +45,11 @@ namespace DarkMyst.Api.Tests
             var client = _fixture.Client;
             (string _, string token) = await client.CreateGuestAsync();
 
-            // /debug/grant-gold does not itself go through IdempotencyService (it is a seeding
-            // helper, not a phase-D endpoint) — so this test targets /teams, a real mutating
-            // endpoint that does, to prove the *shared* mechanism under true concurrency: two
-            // requests issued together with Task.WhenAll, not one after the other.
+            // /debug/grant-gold is now also routed through IdempotencyService (see
+            // Debug_grant_gold_replay_with_the_same_key_grants_exactly_once below), but this test
+            // targets /teams instead, precisely to prove the *shared* mechanism generically rather
+            // than re-prove it against the one endpoint the bug was found on: two requests issued
+            // together with Task.WhenAll, not one after the other.
             var characterA = await Seed.GrantCharacterAsync(client, token, "chr_ashen_knight_i", level: 1);
             var characterB = await Seed.GrantCharacterAsync(client, token, "chr_ashen_knight_i", level: 1);
             var characterC = await Seed.GrantCharacterAsync(client, token, "chr_ashen_knight_i", level: 1);
@@ -91,9 +92,6 @@ namespace DarkMyst.Api.Tests
         [Fact]
         public async Task Reusing_a_key_with_a_different_body_is_refused()
         {
-            // /debug/grant-gold is a seeding convenience, not itself routed through
-            // IdempotencyService (see server/DarkMyst.Api/Debug/DebugGrants.cs) — this needs a
-            // real idempotency-guarded endpoint, so it uses /teams.
             var client = _fixture.Client;
             (string _, string token) = await client.CreateGuestAsync();
             var a = await Seed.GrantCharacterAsync(client, token, "chr_ashen_knight_i", level: 1);
@@ -123,6 +121,40 @@ namespace DarkMyst.Api.Tests
             });
             Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
         }
+
+        [Fact]
+        public async Task Debug_grant_gold_replay_with_the_same_key_grants_exactly_once()
+        {
+            // Regression test for the bug the review round found: /debug/grant-gold (and its two
+            // siblings) used to accept an Idempotency-Key header and silently ignore it, so a
+            // replayed request granted gold a second time instead of returning the stored result.
+            // This reproduces exactly the curl sequence that proved it.
+            var client = _fixture.Client;
+            (string _, string token) = await client.CreateGuestAsync();
+
+            var grant = new { amount = 50000 };
+            var first = await client.ApiPost("/debug/grant-gold", token, "K1", grant);
+            var replay = await client.ApiPost("/debug/grant-gold", token, "K1", grant);
+            first.EnsureSuccessStatusCode();
+            replay.EnsureSuccessStatusCode();
+
+            // The replay must return the exact stored result from the first call, not run the
+            // grant again — this is the same assertion Sequential_replay_with_the_same_key... uses.
+            Assert.Equal(await first.Content.ReadAsStringAsync(), await replay.Content.ReadAsStringAsync());
+
+            var second = await client.ApiPost("/debug/grant-gold", token, "K2", new { amount = 7 });
+            second.EnsureSuccessStatusCode();
+
+            var me = await client.ApiGet("/accounts/me", token);
+            me.EnsureSuccessStatusCode();
+            var account = await me.Content.ReadFromJsonAsync<AccountMeDto>(Json.Options);
+
+            // 50000 (K1, granted once) + 7 (K2) = 50007 — not 100007, which is what the bug produced
+            // by granting the K1 amount a second time on replay.
+            Assert.Equal(50007, account.Gold);
+        }
+
+        private sealed record AccountMeDto(string AccountId, string Kind, int Gold);
 
         private static async Task<DarkMyst.Content.OwnedCharacter> GetCharacterAsync(
             System.Net.Http.HttpClient client, string token, string instanceId)

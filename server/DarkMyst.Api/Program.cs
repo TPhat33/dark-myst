@@ -291,29 +291,52 @@ app.MapPost("/battle/run", async (HttpContext http, ApiDbContext db, BattleServi
 if (app.Environment.IsDevelopment() || builder.Configuration.GetValue<bool>("Debug:AllowGrants"))
 {
     app.MapPost("/debug/grant-character", async (HttpContext http, ApiDbContext db, LedgerService ledger,
-        ContentPackRegistry content, CancellationToken ct) =>
+        ContentPackRegistry content, IdempotencyService idempotency, CancellationToken ct) =>
     {
         AccountEntity account = await AccountAuth.RequireAccountAsync(http, db, ct);
-        (GrantCharacterRequest request, _) = await ApiIo.ReadBodyAsync<GrantCharacterRequest>(http.Request, jsonOptions, ct);
-        OwnedCharacterEntity granted = await DebugGrants.GrantCharacterAsync(db, content, ledger, account.Id, request, ct);
-        return Results.Ok(granted.ToModel());
+        (GrantCharacterRequest request, string raw) = await ApiIo.ReadBodyAsync<GrantCharacterRequest>(http.Request, jsonOptions, ct);
+        string key = ApiIo.RequireIdempotencyKey(http.Request);
+
+        IdempotencyOutcome outcome = await idempotency.ExecuteAsync(account.Id, "debug/grant-character", key, raw, async () =>
+        {
+            OwnedCharacterEntity granted = await DebugGrants.GrantCharacterAsync(db, content, ledger, account.Id, request, key, ct);
+            return new IdempotentOperationResult(200, granted.ToModel());
+        }, ct);
+
+        return ApiIo.ToResult(outcome);
     });
 
-    app.MapPost("/debug/grant-gold", async (HttpContext http, ApiDbContext db, LedgerService ledger, CancellationToken ct) =>
+    app.MapPost("/debug/grant-gold", async (HttpContext http, ApiDbContext db, LedgerService ledger,
+        IdempotencyService idempotency, CancellationToken ct) =>
     {
         AccountEntity account = await AccountAuth.RequireAccountAsync(http, db, ct);
-        (GrantGoldRequest request, _) = await ApiIo.ReadBodyAsync<GrantGoldRequest>(http.Request, jsonOptions, ct);
-        await DebugGrants.GrantGoldAsync(db, ledger, account.Id, request.Amount, ct);
-        return Results.Ok(new { granted = request.Amount });
+        (GrantGoldRequest request, string raw) = await ApiIo.ReadBodyAsync<GrantGoldRequest>(http.Request, jsonOptions, ct);
+        string key = ApiIo.RequireIdempotencyKey(http.Request);
+
+        IdempotencyOutcome outcome = await idempotency.ExecuteAsync(account.Id, "debug/grant-gold", key, raw, async () =>
+        {
+            await DebugGrants.GrantGoldAsync(db, ledger, account.Id, request.Amount, key, ct);
+            return new IdempotentOperationResult(200, new { granted = request.Amount });
+        }, ct);
+
+        return ApiIo.ToResult(outcome);
     });
 
-    app.MapPost("/debug/grant-material", async (HttpContext http, ApiDbContext db, LedgerService ledger, CancellationToken ct) =>
+    app.MapPost("/debug/grant-material", async (HttpContext http, ApiDbContext db, LedgerService ledger,
+        IdempotencyService idempotency, CancellationToken ct) =>
     {
         AccountEntity account = await AccountAuth.RequireAccountAsync(http, db, ct);
-        (GrantMaterialRequest request, _) = await ApiIo.ReadBodyAsync<GrantMaterialRequest>(http.Request, jsonOptions, ct);
-        await DebugGrants.GrantMaterialAsync(ledger, account.Id, request.MaterialId, request.Amount, ct);
-        await db.SaveChangesAsync(ct);
-        return Results.Ok(new { granted = request.MaterialId, amount = request.Amount });
+        (GrantMaterialRequest request, string raw) = await ApiIo.ReadBodyAsync<GrantMaterialRequest>(http.Request, jsonOptions, ct);
+        string key = ApiIo.RequireIdempotencyKey(http.Request);
+
+        IdempotencyOutcome outcome = await idempotency.ExecuteAsync(account.Id, "debug/grant-material", key, raw, async () =>
+        {
+            await DebugGrants.GrantMaterialAsync(ledger, account.Id, request.MaterialId, request.Amount, key, ct);
+            await db.SaveChangesAsync(ct);
+            return new IdempotentOperationResult(200, new { granted = request.MaterialId, amount = request.Amount });
+        }, ct);
+
+        return ApiIo.ToResult(outcome);
     });
 
     // Read-only lookup the test suite (and manual curl exploration) uses to assert a character's
