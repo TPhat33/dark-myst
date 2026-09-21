@@ -47,7 +47,7 @@ src/DarkMyst.Combat/      กฎการต่อสู้ — ไม่มี 
 src/DarkMyst.Content/     content pack, สูตรเลเวลและ evolve
 src/DarkMyst.Expedition/  ระบบสำรวจ (ฟาร์ม) — ต่อยอด Combat + Content, ไม่รู้จัก Unity
 server/DarkMyst.Api/      Game API (ระยะ D) — ดู 10-backend-spec.md
-tests/                    เทสต์ของกฎทั้งหมด (123 เคส) + เทสต์ API กับ Postgres จริง (15 เคส)
+tests/                    เทสต์ของกฎทั้งหมด (123 เคส) + เทสต์ API กับ Postgres จริง (18 เคส)
 tools/DarkMyst.SimRunner/ CLI: validate / battle / sweep / expedition / matrix
 tools/build-unity-plugins.sh
 content/                  ข้อมูลเกมทั้งหมดเป็น JSON — แหล่งความจริงชุดเดียว

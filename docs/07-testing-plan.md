@@ -11,9 +11,9 @@ dotnet test
 | `DarkMyst.Combat.Tests` | 55 | สูตรความเสียหาย ความแน่นอนของผล ลำดับ ตำแหน่ง สถานะ ความตาย การตรวจสอบข้อมูล, HP เริ่มต้นบางส่วน (`StartingHp`) |
 | `DarkMyst.Content.Tests` | 48 | การโหลดเนื้อหา สูตรเลเวล กฎ evolve และทุกกรณีที่ต้องปฏิเสธ, การตรวจสอบด่านสำรวจ/ตารางรางวัล/เหตุการณ์, ขนาดและความครบของโรสเตอร์ (12-16 สาย, ทุกธาตุมีอย่างน้อยหนึ่งสาย) |
 | `DarkMyst.Expedition.Tests` | 20 | การสร้างแผนที่, seed ต่อจุด, HP ติดตัวข้ามจุด, บัฟเฉพาะรอบ, รางวัล, แพ้/ชนะ, serialize/resume, การกำหนดเวอร์ชัน |
-| `DarkMyst.Api.Tests` | 15 | **Integration ทั้งหมดกับ PostgreSQL จริง** (ไม่มี mock, ไม่มี InMemory) — บัญชีและการเชื่อม, idempotency (เรียงลำดับและพร้อมกันจริง), evolve (รวม concurrency แย่งวัตถุดิบ, ล็อกระหว่าง preview/confirm), การสำรวจ (concurrency, การกำหนดเวอร์ชัน content), การกระทบยอดบัญชีแยกประเภท — ดู [10-backend-spec.md](10-backend-spec.md) |
+| `DarkMyst.Api.Tests` | 18 | **Integration ทั้งหมดกับ PostgreSQL จริง** (ไม่มี mock, ไม่มี InMemory) — บัญชีและการเชื่อม, idempotency (เรียงลำดับและพร้อมกันจริง, รวมการ replay ของ `/debug/grant-*`), evolve (รวม concurrency แย่งวัตถุดิบ, ล็อกระหว่าง preview/confirm), การสำรวจ (concurrency, การกำหนดเวอร์ชัน content), การกระทบยอดบัญชีแยกประเภท, `/health` (ต่อ DB ได้/ไม่ได้) — ดู [10-backend-spec.md](10-backend-spec.md) |
 
-รวม **138 เคส** (123 กฎเกม + 15 API)
+รวม **141 เคส** (123 กฎเกม + 18 API)
 
 ## สิ่งที่ต้องพิสูจน์ในแต่ละกลุ่ม
 

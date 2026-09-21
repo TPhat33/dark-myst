@@ -111,6 +111,12 @@ namespace DarkMyst.Api.Data
                 b.Property(x => x.Lifecycle).HasConversion<string>();
                 // Maps to Postgres's own system column: a free, always-changing row version, so a
                 // second writer that raced past the explicit row lock still gets caught here.
+                // Verified against Npgsql.EntityFrameworkCore.PostgreSQL 8.0.10 (see this project's
+                // .csproj) — IsRowVersion() on a `uint` property is exactly how that provider's own
+                // docs say to map xmin; if a future Npgsql major version changes how it recognizes
+                // this pattern (or renames/retypes what it expects xmin-backed properties to look
+                // like), a row that stops raising DbUpdateConcurrencyException on a real conflict is
+                // the symptom — check this mapping first, not ExpeditionService's locking logic.
                 b.Property(x => x.Version).IsRowVersion();
             });
 

@@ -13,6 +13,7 @@ using DarkMyst.Api.Data.Entities;
 using DarkMyst.Api.Debug;
 using DarkMyst.Api.Evolve;
 using DarkMyst.Api.Expeditions;
+using DarkMyst.Api.Health;
 using DarkMyst.Api.Idempotency;
 using DarkMyst.Api.Ledger;
 using DarkMyst.Api.Teams;
@@ -80,6 +81,19 @@ app.UseExceptionHandler(errorApp => errorApp.Run(async context =>
     context.Response.StatusCode = status;
     await context.Response.WriteAsJsonAsync(body, jsonOptions);
 }));
+
+// ---------------------------------------------------------------------------
+// Health — liveness (this handler running at all) + a database-reachability check. No auth: a
+// deploy target's health probe and CI's own Postgres-service-container job both need to call this
+// before there is any account to authenticate as.
+// ---------------------------------------------------------------------------
+
+app.MapGet("/health", async (ApiDbContext db, CancellationToken ct) =>
+{
+    HealthResult result = await HealthCheck.CheckAsync(db, ct);
+    var body = new { status = result.DatabaseReachable ? "healthy" : "unhealthy", database = result.Database };
+    return result.DatabaseReachable ? Results.Ok(body) : Results.Json(body, statusCode: 503);
+});
 
 // ---------------------------------------------------------------------------
 // Accounts

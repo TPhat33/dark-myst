@@ -49,13 +49,18 @@ server/DarkMyst.Api/
 | `POST /expeditions/{id}/abandon` | ต้อง | ต้อง | หยุดรันกลางทาง (ดูหัวข้อการตัดสินใจด้านล่าง) |
 | `GET /expeditions/{id}` | ต้อง | - | อ่านสถานะปัจจุบัน — คือ "resume" ฝั่งไคลเอนต์ |
 | `POST /battle/run` | ต้อง | ไม่บังคับ | สนามทดลอง — ไม่จ่ายรางวัล, ตรวจ checksum ถ้าไคลเอนต์ส่งมา |
-| `POST /debug/grant-*` | ต้อง | ไม่บังคับ | ดูหัวข้อ "สิ่งที่ตั้งใจตัดออก" |
+| `POST /debug/grant-gold` \| `grant-material` \| `grant-character` | ต้อง | ต้อง | เฉพาะ `Development`/`Debug:AllowGrants` — ดูหัวข้อ "สิ่งที่ตั้งใจตัดออก" |
+| `GET /debug/character/{instanceId}` | ต้อง | - | อ่านสถานะตัวละครหนึ่งตัว — เฉพาะ `Development`/`Debug:AllowGrants` เช่นกัน |
+| `GET /health` | ไม่ต้อง | - | liveness + เช็คว่าต่อฐานข้อมูลได้ |
 
 ## สัญญา idempotency (idempotency contract)
 
-ทุก endpoint ที่แก้ข้อมูลต้องมี header `Idempotency-Key` เป็นสตริงที่ไคลเอนต์เลือกเอง
-(แนะนำ GUID ต่อการกดปุ่มหนึ่งครั้ง) กลไกเดียวที่ทุก endpoint เรียกผ่านคือ
-`IdempotencyService.ExecuteAsync` (`Idempotency/IdempotencyService.cs`):
+ทุก endpoint ที่แก้ยอดเศรษฐกิจของผู้เล่น (ทอง, วัตถุดิบ, ตัวละคร, ทีม, สถานะรันสำรวจ) ต้องมี
+header `Idempotency-Key` เป็นสตริงที่ไคลเอนต์เลือกเอง (แนะนำ GUID ต่อการกดปุ่มหนึ่งครั้ง) และ
+เรียกผ่านกลไกเดียวกันคือ `IdempotencyService.ExecuteAsync` (`Idempotency/IdempotencyService.cs`)
+รวมทั้งสามตัว `/debug/grant-*` ด้วย (เดิมสามตัวนี้รับ header มาแล้วเมินเฉย — แก้แล้ว) —
+ข้อยกเว้นเดียวที่ตั้งใจคือ `POST /battle/run` ตามที่หัวข้อ "สิ่งที่ตั้งใจตัดออก" ด้านล่างอธิบาย
+เหตุผลไว้ (ไม่จ่ายรางวัล ความเสี่ยงจากคำขอซ้ำมีแค่แถว `battle_checksum_mismatches` ซ้ำ):
 
 1. คีย์ `(accountId, endpoint, key)` ถูกจองด้วยแถวสถานะ `InProgress` **ในธุรกรรมเดียวกัน**
    กับที่ operation จริงจะรัน
@@ -74,8 +79,10 @@ server/DarkMyst.Api/
 
 ## ขอบเขตธุรกรรม (transaction boundaries)
 
-ทุก endpoint ที่แก้ข้อมูลเปิด **ธุรกรรมเดียว** ผ่าน `IdempotencyService.ExecuteAsync` แล้วส่ง
-`ApiDbContext` เดียวกันต่อให้ service ชั้นในใช้ (evolve, expedition, teams, ledger) —
+ทุก endpoint ที่แก้ยอดเศรษฐกิจของผู้เล่น (รวมสามตัว `/debug/grant-*`) เปิด **ธุรกรรมเดียว**
+ผ่าน `IdempotencyService.ExecuteAsync` แล้วส่ง `ApiDbContext` เดียวกันต่อให้ service ชั้นในใช้
+(evolve, expedition, teams, ledger, debug grants) — ข้อยกเว้นเดียวคือ `POST /battle/run`
+ตามที่อธิบายไว้ข้างต้น —
 ไม่มี service ไหนเปิดธุรกรรมของตัวเองซ้อนเข้าไปอีกชั้น `LedgerService` เองก็ไม่เปิดธุรกรรม
 ตั้งใจ เพราะสมมติว่ามันอยู่ในธุรกรรมของ caller เสมอ
 
@@ -174,9 +181,17 @@ Bearer token ของบัญชีที่ชนะถูกส่งกล�
 
 - **ไม่มีระบบซื้อในแอปจริง** (`docs/04-economy-spec.md` เอง: ตัวเลขเศรษฐกิจยังไม่ล็อกจนกว่าจะ
   ได้ข้อมูลจากระยะ C) — `Debug/DebugGrants.cs` เป็นตัวแทนชั่วคราวสำหรับให้ทดสอบ/สาธิตวงจร
-  evolve และ expedition ได้แบบ end-to-end โดยไม่ต้องมีระบบร้านค้า ถูกปิดไว้นอก
-  `Development` (`Debug:AllowGrants=false` เป็นค่าเริ่มต้น) **ไม่ใช่ endpoint ที่จะเข้าสู่
-  production**
+  evolve และ expedition ได้แบบ end-to-end โดยไม่ต้องมีระบบร้านค้า สามตัวคือ
+  `POST /debug/grant-gold` (เพิ่มทอง), `POST /debug/grant-material` (เพิ่มวัตถุดิบ) และ
+  `POST /debug/grant-character` (สร้างตัวละครใหม่ให้บัญชี) แต่ละตัวแก้ยอดเศรษฐกิจจริงเหมือน
+  endpoint ปกติ จึงเรียกผ่าน `IdempotencyService.ExecuteAsync` เหมือนกันทุกประการ (ไม่ใช่
+  ทางลัดที่มองข้ามคีย์ที่ไคลเอนต์ส่งมา) — คู่กันมี `GET /debug/character/{instanceId}` อ่าน
+  อย่างเดียว ไว้ให้เทสต์/curl ตรวจสถานะตัวละครหลังการกระทำ ทั้งสี่ endpoint ถูกปิดไว้นอก
+  `Development` ด้วยเงื่อนไขเดียวกันใน Program.cs: `app.Environment.IsDevelopment() ||
+  Debug:AllowGrants` — ค่าเริ่มต้นใน `appsettings.json` คือ `Debug:AllowGrants=false`
+  (`appsettings.Development.json` เปิดเป็น `true` สำหรับรันแบบ dev/localhost เท่านั้น)
+  **ไม่ใช่ endpoint ที่จะเข้าสู่ production** — เป็นตัวยืนแทนร้านค้า/gacha ที่ระยะ E จะสร้างจริง
+  เท่านั้น
 - **ไม่มี server-side verification ของ Apple/Google/AdMob จริง** — `IIdentityProvider` และ
   webhook รับซื้อ/โฆษณาเป็นงานของระยะ E ตาม roadmap
 - **ไม่มีการ retire content version ออกจากหน่วยความจำ** — `ContentPackRegistry` เก็บทุกเวอร์ชัน
@@ -205,5 +220,11 @@ Bearer token ของบัญชีที่ชนะถูกส่งกล�
   choose สองคำขอซ้ำกันบนรันเดียวกัน, การ resume ข้ามเวอร์ชัน content
 - **การกระทบยอด (reconciliation)**: รวมยอด `ledger_entries` แล้วเทียบกับยอดทอง/ไอเทม/
   การมีอยู่ของตัวละครจริง หลังลำดับการกระทำผสม (grant → evolve → expedition)
+- **`/health`** (`HealthTests.cs`): เคสฐานข้อมูลต่อได้ยิงผ่าน HTTP จริงเหมือนเคสอื่นทั้งหมด
+  ส่วนเคสต่อไม่ได้เรียก `HealthCheck.CheckAsync` ตรง ๆ ด้วย `ApiDbContext` ที่ชี้ไปยัง
+  connection string ที่ไม่มีอะไรฟังอยู่ (ไม่ใช่ mock — เป็น `ApiDbContext` จริงที่ต่อไม่ติดจริง) —
+  ไม่ผ่าน `WebApplicationFactory` เพราะ Program.cs รัน migration ตอน startup ก่อน endpoint ไหน
+  จะพร้อมรับคำขอ ฐานข้อมูลที่ต่อไม่ได้จริง ๆ ทำให้ startup ล้มเหลวไปก่อนที่ `/health` จะถูกเรียกได้
+  ด้วยซ้ำ — ข้อจำกัดที่มีอยู่แล้วในการออกแบบ startup ไม่ใช่สิ่งที่รอบนี้แก้
 
-รวม **123 (กฎเกม) + 15 (API, integration ทั้งหมดกับ Postgres จริง) = 138 เคส**
+รวม **123 (กฎเกม) + 18 (API, integration ทั้งหมดกับ Postgres จริง) = 141 เคส**
