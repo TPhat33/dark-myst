@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <RootNamespace>DarkMyst.Api</RootNamespace>
+    <!--
+      Directory.Build.props pins LangVersion 9.0 for the game-rules libraries (Combat/Content/
+      Expedition — that pin exists for their Unity/IL2CPP target, which this project never ships
+      to). Minimal-API route handlers need C#'s natural-delegate-type inference for lambdas
+      (C# 10+) to bind against `Delegate handler` overloads at all; without it every app.MapPost
+      lambda mis-resolves against the unrelated single-argument RequestDelegate overload instead.
+    -->
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <!--
+    Test code outside this assembly (tests/DarkMyst.Api.Tests) constructs the host in-process via
+    WebApplicationFactory and reaches into a few request-building helpers. This is the correct
+    MSBuild item shape for InternalsVisibleTo — the attribute-form <InternalsVisibleTo Include=".."/>
+    inside a PropertyGroup is not a real item and silently fails to build.
+  -->
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>DarkMyst.Api.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.10">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10" />
+    <!-- Consistent snake_case table/column names, matching the few places (evolve's row-locking
+         query) that address columns with raw SQL rather than LINQ. -->
+    <PackageReference Include="EFCore.NamingConventions" Version="8.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/DarkMyst.Combat/DarkMyst.Combat.csproj" />
+    <ProjectReference Include="../../src/DarkMyst.Content/DarkMyst.Content.csproj" />
+    <ProjectReference Include="../../src/DarkMyst.Expedition/DarkMyst.Expedition.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <!-- Same reasoning as DarkMyst.Api.csproj: this project is not bound by
+         Directory.Build.props's LangVersion 9.0 pin (that exists for the Unity/IL2CPP-targeted
+         game-rules libraries only). -->
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Real integration tests against a live, throwaway Postgres database per test class
+      (tests/DarkMyst.Api.Tests/Infra/PostgresTestDatabase.cs) — no mocks, no InMemory provider.
+      Docker/Testcontainers is not available in this environment; the CI job
+      (.github/workflows/ci.yml) instead starts Postgres as a service container so these run the
+      same way in CI as locally.
+    -->
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="xunit" Version="2.6.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.4" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.10" />
+    <PackageReference Include="Npgsql" Version="8.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../server/DarkMyst.Api/DarkMyst.Api.csproj" />
+  </ItemGroup>
+
+</Project>

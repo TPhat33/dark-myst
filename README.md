@@ -9,12 +9,14 @@
 ## เริ่มต้น
 
 ```bash
-dotnet test                                              # กฎเกมทั้งหมด (123 เคส)
+dotnet test                                              # กฎเกม (123) + API กับ Postgres จริง (15) = 138 เคส
 dotnet run --project tools/DarkMyst.SimRunner -- validate # ตรวจ content pack
 ./tools/build-unity-plugins.sh                            # เตรียมโปรเจกต์ Unity
 ```
 
-ต้องมี .NET SDK 8 สำหรับส่วนกฎเกม และ Unity 2022.3 LTS สำหรับตัวเกม
+ต้องมี .NET SDK 8 สำหรับส่วนกฎเกมและ backend, Unity 2022.3 LTS สำหรับตัวเกม, และ PostgreSQL 16
+ที่รันอยู่ (สำหรับเทสต์ `DarkMyst.Api.Tests` และการรัน `server/DarkMyst.Api` เอง — ดู
+[docs/10-backend-spec.md](docs/10-backend-spec.md))
 
 ## ลองดูการต่อสู้จริง
 
@@ -53,7 +55,8 @@ dotnet run --project tools/DarkMyst.SimRunner -- matrix --level 12 --repeat 300 
 src/DarkMyst.Combat/       กฎการต่อสู้ — ไม่มี dependency, ไม่รู้จัก Unity, เลขจำนวนเต็มล้วน
 src/DarkMyst.Content/      content pack, สูตรเลเวลและ evolve
 src/DarkMyst.Expedition/   ระบบสำรวจ (ฟาร์ม) — แผนที่จุดเชื่อม บัฟเฉพาะรอบ ต่อยอดจากทั้งสองข้างบน
-tests/                     เทสต์ของกฎทั้งหมด
+server/DarkMyst.Api/       Game API (ระยะ D) — บัญชี evolve การสำรวจ อ้างอิงสามไลบรารีข้างบน
+tests/                     เทสต์ของกฎทั้งหมด + เทสต์ API กับ Postgres จริง
 tools/DarkMyst.SimRunner/  CLI: validate / battle / sweep / expedition / matrix
 content/                   ข้อมูลเกมทั้งหมดเป็น JSON — แหล่งความจริงชุดเดียว
 unity/DarkMyst/            โปรเจกต์ Unity (2022.3 LTS)
@@ -73,7 +76,9 @@ docs/                      เอกสารออกแบบ
 มีเพียงกลไกที่เปลี่ยนกติกาจริง ๆ ที่ต้องเขียนโค้ด
 
 **หลังบ้านเป็น C# เพื่อใช้กฎร่วมกัน** หน้าจอ preview สแตทก่อน evolve ที่ไม่ตรงกับผลจริง
-คือวิธีที่เร็วที่สุดในการทำลายความเชื่อมั่นในเกมที่สร้างบนการฟาร์ม
+คือวิธีที่เร็วที่สุดในการทำลายความเชื่อมั่นในเกมที่สร้างบนการฟาร์ม `server/DarkMyst.Api/`
+เรียก `DarkMyst.Combat`/`DarkMyst.Content`/`DarkMyst.Expedition` ตัวเดียวกับไคลเอนต์เสมอ
+ไม่เขียนกฎขึ้นใหม่ฝั่งเซิร์ฟเวอร์เลย (ดู [docs/10-backend-spec.md](docs/10-backend-spec.md))
 หน้าจัดการเนื้อหายังใช้ Vue + TypeScript ตามเดิม
 
 ## เอกสาร
@@ -91,6 +96,7 @@ docs/                      เอกสารออกแบบ
 | [07 แผนทดสอบ](docs/07-testing-plan.md) | สิ่งที่ต้องพิสูจน์ และตัวเลขที่วัดได้แล้ว |
 | [08 ตัวชี้วัด](docs/08-metrics.md) | เหตุการณ์ที่ต้องเก็บและเหตุผล |
 | [09 ระบบสำรวจ](docs/09-expedition-spec.md) | แผนที่จุดเชื่อม การสุ่มที่ตรวจสอบได้ บัฟเฉพาะรอบ |
+| [10 Game API](docs/10-backend-spec.md) | Endpoint, สัญญา idempotency, ขอบเขตธุรกรรม, การเชื่อมบัญชี |
 
 ## ขั้นถัดไป
 

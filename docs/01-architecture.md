@@ -30,7 +30,7 @@ flowchart TD
 | กฎการต่อสู้ | `DarkMyst.Combat` (netstandard2.1, ไม่มี dependency) | คำนวณผลและสร้างลำดับเหตุการณ์ |
 | ข้อมูลและการปั้น | `DarkMyst.Content` (netstandard2.1 + Newtonsoft) | โหลด content pack, สูตรเลเวล/evolve |
 | การสำรวจ (ฟาร์ม) | `DarkMyst.Expedition` (netstandard2.1 + Newtonsoft) | สร้างแผนที่จุดเชื่อมจาก seed, เดินด่านทีละจุด, เรียก `DarkMyst.Combat` ต่อการต่อสู้แต่ละจุด |
-| ระบบหลังบ้าน | ASP.NET Core | บัญชี การสำรวจ evolve รางวัล ร้านค้า |
+| ระบบหลังบ้าน | ASP.NET Core (`server/DarkMyst.Api/`) | บัญชี การสำรวจ evolve รางวัล — ร้านค้ายังไม่ทำ (ระยะ E), ดู [10-backend-spec.md](10-backend-spec.md) |
 | ฐานข้อมูล | PostgreSQL | ข้อมูลถาวรและธุรกรรม |
 | ไฟล์เนื้อหา | Object storage + CDN | ภาพ เสียง และ content pack แต่ละเวอร์ชัน |
 | หน้าจัดการ | Vue + TypeScript | เพิ่มตัวละคร ด่าน ร้านค้า และตรวจข้อมูล |
@@ -46,7 +46,8 @@ DarkMyst.sln
 src/DarkMyst.Combat/      กฎการต่อสู้ — ไม่มี dependency, ไม่รู้จัก Unity
 src/DarkMyst.Content/     content pack, สูตรเลเวลและ evolve
 src/DarkMyst.Expedition/  ระบบสำรวจ (ฟาร์ม) — ต่อยอด Combat + Content, ไม่รู้จัก Unity
-tests/                    เทสต์ของกฎทั้งหมด (123 เคส)
+server/DarkMyst.Api/      Game API (ระยะ D) — ดู 10-backend-spec.md
+tests/                    เทสต์ของกฎทั้งหมด (123 เคส) + เทสต์ API กับ Postgres จริง (15 เคส)
 tools/DarkMyst.SimRunner/ CLI: validate / battle / sweep / expedition / matrix
 tools/build-unity-plugins.sh
 content/                  ข้อมูลเกมทั้งหมดเป็น JSON — แหล่งความจริงชุดเดียว
@@ -54,9 +55,11 @@ unity/DarkMyst/           โปรเจกต์ Unity
 docs/                     เอกสารชุดนี้
 ```
 
-ยังไม่มี `server/` และ `admin/` ในรีโปนี้ — จะเพิ่มในระยะ D ตาม [06-roadmap.md](06-roadmap.md)
-โดยอ้างอิง `src/DarkMyst.Combat`, `src/DarkMyst.Content` และ `src/DarkMyst.Expedition` ชุดเดิม
-ไม่ใช่เขียนกฎขึ้นใหม่ฝั่งเซิร์ฟเวอร์
+`server/DarkMyst.Api/` มีแล้วตั้งแต่ระยะ D นี้ (ดู [10-backend-spec.md](10-backend-spec.md)) —
+`admin/` (หน้าจัดการ Vue + TS) ยังไม่มี เป็นงานที่เหลือของระยะ D ตาม
+[06-roadmap.md](06-roadmap.md) `server/DarkMyst.Api/` อ้างอิง `src/DarkMyst.Combat`,
+`src/DarkMyst.Content` และ `src/DarkMyst.Expedition` ชุดเดิมทั้งหมด ไม่เขียนกฎขึ้นใหม่ฝั่ง
+เซิร์ฟเวอร์เลย
 
 ## ทำไม Unity ถึงใช้ DLL ไม่ใช่ source
 

@@ -72,3 +72,4 @@ milestone แรกคือผู้เล่นพูดได้ว่า *"�
 | [07-testing-plan.md](07-testing-plan.md) | แผนทดสอบและสิ่งที่ต้องพิสูจน์ |
 | [08-metrics.md](08-metrics.md) | ตัวชี้วัดที่ใช้ตัดสินใจพัฒนาต่อ |
 | [09-expedition-spec.md](09-expedition-spec.md) | ระบบสำรวจ: แผนที่จุดเชื่อม การสุ่มที่ตรวจสอบได้ บัฟเฉพาะรอบ |
+| [10-backend-spec.md](10-backend-spec.md) | Game API (ระยะ D): endpoint, สัญญา idempotency, ขอบเขตธุรกรรม, การเชื่อมบัญชี |

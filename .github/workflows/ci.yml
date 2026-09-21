@@ -23,8 +23,13 @@ jobs:
       - name: Build
         run: dotnet build --no-restore -c Release
 
+      # Only the game-rule test projects — DarkMyst.Api.Tests needs a live Postgres and runs in
+      # its own "backend" job below, where that service is actually available.
       - name: Test
-        run: dotnet test --no-build -c Release --verbosity normal
+        run: |
+          dotnet test tests/DarkMyst.Combat.Tests --no-build -c Release --verbosity normal
+          dotnet test tests/DarkMyst.Content.Tests --no-build -c Release --verbosity normal
+          dotnet test tests/DarkMyst.Expedition.Tests --no-build -c Release --verbosity normal
 
       # Catches a broken reference in content/ even when no test happens to touch it.
       - name: Validate the content pack
@@ -61,3 +66,46 @@ jobs:
           dotnet run --project tools/DarkMyst.SimRunner -c Release --no-build -- \
             matrix --level 12 --repeat 100 \
             --rosters "core_balanced=chr_ashen_knight_i,chr_grave_warden_i,chr_ember_adept_i,chr_tide_oracle_i,chr_pale_stalker_i;no_healer=chr_ashen_knight_i,chr_grave_warden_i,chr_thorn_maiden_i,chr_mire_hexer_i,chr_pale_stalker_i;swap_shackleborn=chr_ashen_knight_i,chr_grave_warden_i,chr_shackleborn_i,chr_tide_oracle_i,chr_pale_stalker_i;swap_bramble_warden=chr_bramble_warden_i,chr_grave_warden_i,chr_ember_adept_i,chr_tide_oracle_i,chr_pale_stalker_i"
+
+  backend:
+    name: Game API (server/DarkMyst.Api)
+    runs-on: ubuntu-latest
+
+    # docs/10-backend-spec.md: every DarkMyst.Api.Tests case runs against a real Postgres, never
+    # a mock or an InMemory provider — this service container is that Postgres for CI. The
+    # POSTGRES_USER here becomes the cluster's initial (superuser-equivalent) role, so it has the
+    # CREATEDB privilege each test class's throwaway database needs, matching the local dev setup
+    # this project assumes (docs/10-backend-spec.md's testing section).
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: darkmyst
+          POSTGRES_PASSWORD: darkmyst_dev
+          POSTGRES_DB: darkmyst
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      # Each test class provisions and migrates its own throwaway database (Infra/
+      # PostgresTestDatabase.cs) — no separate "run migrations" step is needed here, the same as
+      # a developer running this locally never needs one either.
+      - name: Test
+        run: dotnet test tests/DarkMyst.Api.Tests --no-build -c Release --verbosity normal
