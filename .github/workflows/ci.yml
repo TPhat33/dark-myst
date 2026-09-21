@@ -109,3 +109,69 @@ jobs:
       # a developer running this locally never needs one either.
       - name: Test
         run: dotnet test tests/DarkMyst.Api.Tests --no-build -c Release --verbosity normal
+
+  admin:
+    name: Admin tool (admin/) — build, unit tests, Playwright
+    runs-on: ubuntu-latest
+
+    # docs/11-admin-spec.md: admin/e2e/run-api.sh stands up a real DarkMyst.Api against a scratch
+    # database of its own (created and dropped by that script, never this container's "darkmyst"
+    # database directly) — same service container shape as the "backend" job above, for the same
+    # reason: no mock, no InMemory provider, a real Postgres the publish/rollback loop actually
+    # writes through.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: darkmyst
+          POSTGRES_PASSWORD: darkmyst_dev
+          POSTGRES_DB: darkmyst
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+
+      # admin/e2e/run-api.sh launches the API with `dotnet run --no-build`, so it has to already
+      # be built before Playwright's webServer tries to start it.
+      - name: Restore and build the API
+        run: |
+          dotnet restore
+          dotnet build server/DarkMyst.Api -c Release --no-restore
+
+      - name: Install admin dependencies
+        working-directory: admin
+        run: npm ci
+
+      - name: Build the admin front end
+        working-directory: admin
+        run: npm run build
+
+      - name: Admin unit tests
+        working-directory: admin
+        run: npm test
+
+      # This runner has no pre-installed browser (unlike the sandbox admin/playwright.config.ts
+      # also has to work in) — download Chromium here.
+      - name: Install Playwright's Chromium
+        working-directory: admin
+        run: npx playwright install --with-deps chromium
+
+      - name: Playwright end-to-end tests
+        working-directory: admin
+        run: npm run test:e2e

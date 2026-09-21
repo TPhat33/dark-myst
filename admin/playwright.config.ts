@@ -1,9 +1,14 @@
+import { existsSync } from 'node:fs'
 import { defineConfig, devices } from '@playwright/test'
 
-// The Chromium build under PLAYWRIGHT_BROWSERS_PATH is pre-installed and may not match whatever
-// @playwright/test's own bundled revision expects — launch it explicitly rather than let
-// Playwright resolve (and potentially try to download) its own copy.
-const CHROMIUM_PATH = '/opt/pw-browsers/chromium'
+// This sandbox's Chromium build lives under a fixed, pre-installed path that may not match
+// whatever revision @playwright/test itself expects — launch it explicitly rather than let
+// Playwright resolve (and potentially try to download) its own copy there. A normal CI runner (see
+// .github/workflows/ci.yml's "admin" job, which runs `playwright install --with-deps chromium`
+// first) has no such path, so this falls back to Playwright's own default resolution instead of
+// pointing at a file that does not exist.
+const PINNED_CHROMIUM_PATH = '/opt/pw-browsers/chromium'
+const chromiumLaunchOptions = existsSync(PINNED_CHROMIUM_PATH) ? { executablePath: PINNED_CHROMIUM_PATH } : {}
 
 export default defineConfig({
   testDir: './e2e',
@@ -22,7 +27,7 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        launchOptions: { executablePath: CHROMIUM_PATH }
+        launchOptions: chromiumLaunchOptions
       }
     }
   ],
