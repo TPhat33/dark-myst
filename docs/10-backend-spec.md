@@ -26,7 +26,8 @@ server/DarkMyst.Api/
   Ledger/                      บันทึกการเคลื่อนไหวทอง/ไอเทม/ตัวละครแบบ append-only
   Idempotency/                 กลไกกลางที่ endpoint ที่แก้ข้อมูลทุกตัวต้องผ่าน
   Debug/                       endpoint แจกของสำหรับทดสอบ/สาธิต (ดูหัวข้อ "สิ่งที่ตั้งใจตัดออก")
-  Auth/                        bearer-token stub
+  Auth/                        bearer-token stub (player) + gate ของ admin (AdminAuth.cs)
+  Admin/                       หน้าจัดการเนื้อหา — ดู 11-admin-spec.md
 ```
 
 หนึ่งโปรเจกต์ แบ่งโมดูลภายในตามโฟลเดอร์ฟีเจอร์ ไม่ใช่ microservices — ตาม
@@ -52,6 +53,11 @@ server/DarkMyst.Api/
 | `POST /debug/grant-gold` \| `grant-material` \| `grant-character` | ต้อง | ต้อง | เฉพาะ `Development`/`Debug:AllowGrants` — ดูหัวข้อ "สิ่งที่ตั้งใจตัดออก" |
 | `GET /debug/character/{instanceId}` | ต้อง | - | อ่านสถานะตัวละครหนึ่งตัว — เฉพาะ `Development`/`Debug:AllowGrants` เช่นกัน |
 | `GET /health` | ไม่ต้อง | - | liveness + เช็คว่าต่อฐานข้อมูลได้ |
+
+ตารางนี้ไม่รวม endpoint ของหน้าจัดการ (`POST /admin/bootstrap`, `/admin/content/*`) —
+endpoint กลุ่มนั้นผ่าน gate การยืนยันตัวตนคนละแบบโดยสิ้นเชิง (`X-Admin-Token`, ไม่ใช่
+`Authorization: Bearer` ที่ตารางนี้พูดถึง) รายละเอียดเต็มอยู่ที่
+[11-admin-spec.md](11-admin-spec.md)
 
 ## สัญญา idempotency (idempotency contract)
 
@@ -199,9 +205,6 @@ Bearer token ของบัญชีที่ชนะถูกส่งกล�
 - **ไม่มี endpoint login ผ่าน identity provider แยกจาก link** — token ของบัญชีที่ชนะการเชื่อม
   ถูกส่งกลับตรง ๆ ใน response ของ `/accounts/link/confirm` แทน เพราะยังไม่มีขั้นตอน "เข้าสู่ระบบ
   ด้วยบัญชีถาวรที่มีอยู่แล้ว" ที่เป็นอิสระจากการเชื่อม — งานของระยะ E เมื่อ real auth เข้ามา
-- **หน้าจัดการ (Vue + TS) และ CI สำหรับมัน** — [05-content-pipeline.md](05-content-pipeline.md)
-  ระบุไว้เป็นงานระยะ D เช่นกัน แต่ไม่อยู่ในขอบเขตรอบนี้ (โฟกัสที่ backend และการทดสอบ
-  ความถูกต้องของธุรกรรมก่อน)
 - **battle/run ไม่บังคับ Idempotency-Key** — มันไม่แก้ยอดเศรษฐกิจใด ๆ (ไม่จ่ายรางวัล) ความเสี่ยง
   เดียวคือแถว `battle_checksum_mismatches` ซ้ำ ซึ่งไม่กระทบความถูกต้องของบัญชีผู้เล่น
 
@@ -227,4 +230,7 @@ Bearer token ของบัญชีที่ชนะถูกส่งกล�
   จะพร้อมรับคำขอ ฐานข้อมูลที่ต่อไม่ได้จริง ๆ ทำให้ startup ล้มเหลวไปก่อนที่ `/health` จะถูกเรียกได้
   ด้วยซ้ำ — ข้อจำกัดที่มีอยู่แล้วในการออกแบบ startup ไม่ใช่สิ่งที่รอบนี้แก้
 
-รวม **123 (กฎเกม) + 18 (API, integration ทั้งหมดกับ Postgres จริง) = 141 เคส**
+รวม **123 (กฎเกม) + 31 (API, integration ทั้งหมดกับ Postgres จริง) = 154 เคส** — 18 เคสข้างต้น
+เป็นของ endpoint ในเอกสารนี้ อีก 13 เคสเป็นของหน้าจัดการ (`Admin/`, gate การยืนยันตัวตนแยก
+ต่างหาก) อยู่ในไฟล์ทดสอบเดียวกัน (`tests/DarkMyst.Api.Tests/`) แต่รายละเอียดอยู่ที่
+[11-admin-spec.md](11-admin-spec.md)

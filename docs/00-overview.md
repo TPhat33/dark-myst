@@ -73,3 +73,4 @@ milestone แรกคือผู้เล่นพูดได้ว่า *"�
 | [08-metrics.md](08-metrics.md) | ตัวชี้วัดที่ใช้ตัดสินใจพัฒนาต่อ |
 | [09-expedition-spec.md](09-expedition-spec.md) | ระบบสำรวจ: แผนที่จุดเชื่อม การสุ่มที่ตรวจสอบได้ บัฟเฉพาะรอบ |
 | [10-backend-spec.md](10-backend-spec.md) | Game API (ระยะ D): endpoint, สัญญา idempotency, ขอบเขตธุรกรรม, การเชื่อมบัญชี |
+| [11-admin-spec.md](11-admin-spec.md) | หน้าจัดการเนื้อหา (ระยะ D): endpoint, gate การยืนยันตัวตนของ admin, สัญญาการเผยแพร่/ย้อนกลับ |

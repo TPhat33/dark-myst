@@ -11,9 +11,10 @@ dotnet test
 | `DarkMyst.Combat.Tests` | 55 | สูตรความเสียหาย ความแน่นอนของผล ลำดับ ตำแหน่ง สถานะ ความตาย การตรวจสอบข้อมูล, HP เริ่มต้นบางส่วน (`StartingHp`) |
 | `DarkMyst.Content.Tests` | 48 | การโหลดเนื้อหา สูตรเลเวล กฎ evolve และทุกกรณีที่ต้องปฏิเสธ, การตรวจสอบด่านสำรวจ/ตารางรางวัล/เหตุการณ์, ขนาดและความครบของโรสเตอร์ (12-16 สาย, ทุกธาตุมีอย่างน้อยหนึ่งสาย) |
 | `DarkMyst.Expedition.Tests` | 20 | การสร้างแผนที่, seed ต่อจุด, HP ติดตัวข้ามจุด, บัฟเฉพาะรอบ, รางวัล, แพ้/ชนะ, serialize/resume, การกำหนดเวอร์ชัน |
-| `DarkMyst.Api.Tests` | 18 | **Integration ทั้งหมดกับ PostgreSQL จริง** (ไม่มี mock, ไม่มี InMemory) — บัญชีและการเชื่อม, idempotency (เรียงลำดับและพร้อมกันจริง, รวมการ replay ของ `/debug/grant-*`), evolve (รวม concurrency แย่งวัตถุดิบ, ล็อกระหว่าง preview/confirm), การสำรวจ (concurrency, การกำหนดเวอร์ชัน content), การกระทบยอดบัญชีแยกประเภท, `/health` (ต่อ DB ได้/ไม่ได้) — ดู [10-backend-spec.md](10-backend-spec.md) |
+| `DarkMyst.Api.Tests` | 31 | **Integration ทั้งหมดกับ PostgreSQL จริง** (ไม่มี mock, ไม่มี InMemory) — บัญชีและการเชื่อม, idempotency (เรียงลำดับและพร้อมกันจริง, รวมการ replay ของ `/debug/grant-*`), evolve (รวม concurrency แย่งวัตถุดิบ, ล็อกระหว่าง preview/confirm), การสำรวจ (concurrency, การกำหนดเวอร์ชัน content), การกระทบยอดบัญชีแยกประเภท, `/health` (ต่อ DB ได้/ไม่ได้) — ดู [10-backend-spec.md](10-backend-spec.md); gate การยืนยันตัวตนของ admin และ publish/validate/rollback/diff ของหน้าจัดการ (13 เคส) — ดู [11-admin-spec.md](11-admin-spec.md) |
 
-รวม **141 เคส** (123 กฎเกม + 18 API)
+รวม **154 เคส** (123 กฎเกม + 31 API รวมหน้าจัดการ) บวกฝั่งหน้าจัดการเอง: **9 เคส vitest** (หน่วย
++ component) และ **2 เคส Playwright** (จบวงจรจริงกับ Chromium — ดู [11-admin-spec.md](11-admin-spec.md))
 
 ## สิ่งที่ต้องพิสูจน์ในแต่ละกลุ่ม
 
@@ -36,7 +37,7 @@ dotnet test
 | กฎเกม | xUnit (`dotnet test`) |
 | สมดุล | `simrunner sweep` — รันหลายพัน seed แล้วดูอัตราชนะ ต่อทีมเดียว; `simrunner matrix` — รันหลายทีมกับหลายด่าน (หรือกับกันเอง) พร้อมกัน แล้วพิมพ์เป็นตาราง |
 | Backend | `dotnet test tests/DarkMyst.Api.Tests` — xUnit + PostgreSQL จริงต่อคลาสเทสต์ (ดู [10-backend-spec.md](10-backend-spec.md)) |
-| หน้าจัดการ | Playwright (ระยะ D) |
+| หน้าจัดการ | `npm test` (vitest, หน่วย + component) และ `npm run test:e2e` (Playwright, Chromium จริงกับ API/เซิร์ฟเวอร์ที่รันจริง) — ดู [11-admin-spec.md](11-admin-spec.md) |
 | ตัวเกม | Unity Test Framework + **อุปกรณ์จริง** |
 
 การทดสอบบนอุปกรณ์จริงแทนด้วยอย่างอื่นไม่ได้ ควรมี iPhone และ Android ระดับกลาง

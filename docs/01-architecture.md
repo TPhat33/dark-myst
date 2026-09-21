@@ -33,7 +33,7 @@ flowchart TD
 | ระบบหลังบ้าน | ASP.NET Core (`server/DarkMyst.Api/`) | บัญชี การสำรวจ evolve รางวัล — ร้านค้ายังไม่ทำ (ระยะ E), ดู [10-backend-spec.md](10-backend-spec.md) |
 | ฐานข้อมูล | PostgreSQL | ข้อมูลถาวรและธุรกรรม |
 | ไฟล์เนื้อหา | Object storage + CDN | ภาพ เสียง และ content pack แต่ละเวอร์ชัน |
-| หน้าจัดการ | Vue + TypeScript | เพิ่มตัวละคร ด่าน ร้านค้า และตรวจข้อมูล |
+| หน้าจัดการ | Vue 3 + TypeScript | แก้ตัวละคร validate/publish/rollback ผ่าน Game API — ดู [11-admin-spec.md](11-admin-spec.md) |
 | ปฏิบัติการ | Managed hosting + logging + backups | ดูแลระบบโดยลดภาระเซิร์ฟเวอร์ |
 
 เริ่มจาก backend **ชุดเดียวที่แบ่งโมดูลภายใน** ยังไม่ต้องแยก microservices หรือใช้ Kubernetes
@@ -47,7 +47,8 @@ src/DarkMyst.Combat/      กฎการต่อสู้ — ไม่มี 
 src/DarkMyst.Content/     content pack, สูตรเลเวลและ evolve
 src/DarkMyst.Expedition/  ระบบสำรวจ (ฟาร์ม) — ต่อยอด Combat + Content, ไม่รู้จัก Unity
 server/DarkMyst.Api/      Game API (ระยะ D) — ดู 10-backend-spec.md
-tests/                    เทสต์ของกฎทั้งหมด (123 เคส) + เทสต์ API กับ Postgres จริง (18 เคส)
+admin/                    หน้าจัดการเนื้อหา (Vue 3 + TypeScript) — ดู 11-admin-spec.md
+tests/                    เทสต์ของกฎทั้งหมด (123 เคส) + เทสต์ API กับ Postgres จริง (31 เคส)
 tools/DarkMyst.SimRunner/ CLI: validate / battle / sweep / expedition / matrix
 tools/build-unity-plugins.sh
 content/                  ข้อมูลเกมทั้งหมดเป็น JSON — แหล่งความจริงชุดเดียว
@@ -55,11 +56,12 @@ unity/DarkMyst/           โปรเจกต์ Unity
 docs/                     เอกสารชุดนี้
 ```
 
-`server/DarkMyst.Api/` มีแล้วตั้งแต่ระยะ D นี้ (ดู [10-backend-spec.md](10-backend-spec.md)) —
-`admin/` (หน้าจัดการ Vue + TS) ยังไม่มี เป็นงานที่เหลือของระยะ D ตาม
-[06-roadmap.md](06-roadmap.md) `server/DarkMyst.Api/` อ้างอิง `src/DarkMyst.Combat`,
-`src/DarkMyst.Content` และ `src/DarkMyst.Expedition` ชุดเดิมทั้งหมด ไม่เขียนกฎขึ้นใหม่ฝั่ง
-เซิร์ฟเวอร์เลย
+`server/DarkMyst.Api/` และ `admin/` มีแล้วตั้งแต่ระยะ D นี้ (ดู
+[10-backend-spec.md](10-backend-spec.md), [11-admin-spec.md](11-admin-spec.md)) — งานที่เหลือ
+ของระยะ D คือ real auth เท่านั้น (ดู [06-roadmap.md](06-roadmap.md)) `server/DarkMyst.Api/`
+อ้างอิง `src/DarkMyst.Combat`, `src/DarkMyst.Content` และ `src/DarkMyst.Expedition` ชุดเดิม
+ทั้งหมด ไม่เขียนกฎขึ้นใหม่ฝั่งเซิร์ฟเวอร์เลย `admin/` แก้ `content/` ผ่าน `server/DarkMyst.Api/`
+เท่านั้น ไม่มีทางเข้าถึงข้อมูลเกมทางอื่น
 
 ## ทำไม Unity ถึงใช้ DLL ไม่ใช่ source
 

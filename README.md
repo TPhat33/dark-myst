@@ -9,14 +9,18 @@
 ## เริ่มต้น
 
 ```bash
-dotnet test                                              # กฎเกม (123) + API กับ Postgres จริง (18) = 141 เคส
+dotnet test                                              # กฎเกม (123) + API กับ Postgres จริง (31) = 154 เคส
 dotnet run --project tools/DarkMyst.SimRunner -- validate # ตรวจ content pack
 ./tools/build-unity-plugins.sh                            # เตรียมโปรเจกต์ Unity
+
+cd admin && npm ci && npm run build && npm test           # หน้าจัดการ: build + เทสต์หน่วย (9 เคส)
+npm run test:e2e                                          # Playwright กับ API/เซิร์ฟเวอร์จริง (2 เคส)
 ```
 
-ต้องมี .NET SDK 8 สำหรับส่วนกฎเกมและ backend, Unity 2022.3 LTS สำหรับตัวเกม, และ PostgreSQL 16
+ต้องมี .NET SDK 8 สำหรับส่วนกฎเกมและ backend, Unity 2022.3 LTS สำหรับตัวเกม, PostgreSQL 16
 ที่รันอยู่ (สำหรับเทสต์ `DarkMyst.Api.Tests` และการรัน `server/DarkMyst.Api` เอง — ดู
-[docs/10-backend-spec.md](docs/10-backend-spec.md))
+[docs/10-backend-spec.md](docs/10-backend-spec.md)) และ Node 22 สำหรับหน้าจัดการ (`admin/`
+— ดู [docs/11-admin-spec.md](docs/11-admin-spec.md))
 
 ## ลองดูการต่อสู้จริง
 
@@ -56,6 +60,7 @@ src/DarkMyst.Combat/       กฎการต่อสู้ — ไม่มี
 src/DarkMyst.Content/      content pack, สูตรเลเวลและ evolve
 src/DarkMyst.Expedition/   ระบบสำรวจ (ฟาร์ม) — แผนที่จุดเชื่อม บัฟเฉพาะรอบ ต่อยอดจากทั้งสองข้างบน
 server/DarkMyst.Api/       Game API (ระยะ D) — บัญชี evolve การสำรวจ อ้างอิงสามไลบรารีข้างบน
+admin/                     หน้าจัดการเนื้อหา (Vue 3 + TypeScript) — แก้/validate/publish/rollback ผ่าน Game API
 tests/                     เทสต์ของกฎทั้งหมด + เทสต์ API กับ Postgres จริง
 tools/DarkMyst.SimRunner/  CLI: validate / battle / sweep / expedition / matrix
 content/                   ข้อมูลเกมทั้งหมดเป็น JSON — แหล่งความจริงชุดเดียว
@@ -79,7 +84,9 @@ docs/                      เอกสารออกแบบ
 คือวิธีที่เร็วที่สุดในการทำลายความเชื่อมั่นในเกมที่สร้างบนการฟาร์ม `server/DarkMyst.Api/`
 เรียก `DarkMyst.Combat`/`DarkMyst.Content`/`DarkMyst.Expedition` ตัวเดียวกับไคลเอนต์เสมอ
 ไม่เขียนกฎขึ้นใหม่ฝั่งเซิร์ฟเวอร์เลย (ดู [docs/10-backend-spec.md](docs/10-backend-spec.md))
-หน้าจัดการเนื้อหายังใช้ Vue + TypeScript ตามเดิม
+หน้าจัดการเนื้อหา (`admin/`) สร้างด้วย Vue + TypeScript ตามที่วางแผนไว้ แก้ไฟล์ `content/`
+ชุดเดียวกันผ่าน Game API เดียวกันนี้เสมอ ไม่ใช่แหล่งข้อมูลชุดที่สอง (ดู
+[docs/11-admin-spec.md](docs/11-admin-spec.md))
 
 ## เอกสาร
 
@@ -97,6 +104,7 @@ docs/                      เอกสารออกแบบ
 | [08 ตัวชี้วัด](docs/08-metrics.md) | เหตุการณ์ที่ต้องเก็บและเหตุผล |
 | [09 ระบบสำรวจ](docs/09-expedition-spec.md) | แผนที่จุดเชื่อม การสุ่มที่ตรวจสอบได้ บัฟเฉพาะรอบ |
 | [10 Game API](docs/10-backend-spec.md) | Endpoint, สัญญา idempotency, ขอบเขตธุรกรรม, การเชื่อมบัญชี |
+| [11 หน้าจัดการ](docs/11-admin-spec.md) | Endpoint, gate การยืนยันตัวตนของ admin, สัญญาการเผยแพร่/ย้อนกลับ |
 
 ## ขั้นถัดไป
 
