@@ -24,12 +24,15 @@ jobs:
         run: dotnet build --no-restore -c Release
 
       # Only the game-rule test projects — DarkMyst.Api.Tests needs a live Postgres and runs in
-      # its own "backend" job below, where that service is actually available.
+      # its own "backend" job below, where that service is actually available. DarkMyst.Sim.Tests
+      # (the shared sweep library both simrunner and the admin sweep button call — see
+      # src/DarkMyst.Sim/) needs no database either, so it runs here alongside the others.
       - name: Test
         run: |
           dotnet test tests/DarkMyst.Combat.Tests --no-build -c Release --verbosity normal
           dotnet test tests/DarkMyst.Content.Tests --no-build -c Release --verbosity normal
           dotnet test tests/DarkMyst.Expedition.Tests --no-build -c Release --verbosity normal
+          dotnet test tests/DarkMyst.Sim.Tests --no-build -c Release --verbosity normal
 
       # Catches a broken reference in content/ even when no test happens to touch it.
       - name: Validate the content pack
