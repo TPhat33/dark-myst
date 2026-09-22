@@ -44,6 +44,7 @@
     <ProjectReference Include="../../src/DarkMyst.Combat/DarkMyst.Combat.csproj" />
     <ProjectReference Include="../../src/DarkMyst.Content/DarkMyst.Content.csproj" />
     <ProjectReference Include="../../src/DarkMyst.Expedition/DarkMyst.Expedition.csproj" />
+    <ProjectReference Include="../../src/DarkMyst.Sim/DarkMyst.Sim.csproj" />
   </ItemGroup>
 
 </Project>

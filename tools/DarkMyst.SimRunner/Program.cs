@@ -7,6 +7,7 @@ using DarkMyst.Combat.Model;
 using DarkMyst.Content;
 using DarkMyst.Expedition;
 using DarkMyst.Expedition.Model;
+using DarkMyst.Sim;
 
 namespace DarkMyst.SimRunner
 {
@@ -118,52 +119,36 @@ namespace DarkMyst.SimRunner
             return 0;
         }
 
+        /// <summary>
+        /// Delegates the actual sweep loop to <c>DarkMyst.Sim.BattleSweepRunner</c> — the same
+        /// implementation the admin tool's sweep button calls (docs/11-admin-spec.md) — and prints
+        /// the exact text this command has always printed. This CLI's behaviour and output must
+        /// not change from extracting the shared library; only the printing stays here.
+        /// </summary>
         private static int RunSweep(ContentPack pack, Options options)
         {
-            int wins = 0;
-            int draws = 0;
-            long totalRounds = 0;
-            var survivors = new Dictionary<string, int>();
-
-            for (int i = 0; i < options.Repeat; i++)
+            SweepResult result = BattleSweepRunner.Run(pack, new SweepRequest
             {
-                BattleResult result = Simulate(pack, options, options.Seed + (ulong)i);
-                totalRounds += result.Rounds;
+                EncounterId = options.EncounterId,
+                Roster = options.Roster,
+                Level = options.Level,
+                Seed = options.Seed,
+                Repeat = options.Repeat
+            });
 
-                if (result.Outcome == BattleOutcome.AttackerVictory)
-                {
-                    wins++;
-                }
-                else if (result.Outcome == BattleOutcome.Draw)
-                {
-                    draws++;
-                }
-
-                foreach (UnitSnapshot unit in result.FinalUnits)
-                {
-                    if (unit.Ref.Side == TeamSide.Attacker && unit.Alive)
-                    {
-                        survivors.TryGetValue(unit.CharacterId, out int count);
-                        survivors[unit.CharacterId] = count + 1;
-                    }
-                }
-            }
-
-            Console.WriteLine("Encounter : " + options.EncounterId);
-            Console.WriteLine("Battles   : " + options.Repeat + " (seeds " + options.Seed + "..+"
-                              + (options.Repeat - 1) + ")");
-            Console.WriteLine("Win rate  : " + Percent(wins, options.Repeat)
-                              + "   draws " + Percent(draws, options.Repeat));
-            Console.WriteLine("Avg length: " + (totalRounds / (double)options.Repeat).ToString("0.0", CultureInfo.InvariantCulture)
+            Console.WriteLine("Encounter : " + result.EncounterId);
+            Console.WriteLine("Battles   : " + result.Battles + " (seeds " + options.Seed + "..+"
+                              + (result.Battles - 1) + ")");
+            Console.WriteLine("Win rate  : " + Percent(result.Wins, result.Battles)
+                              + "   draws " + Percent(result.Draws, result.Battles));
+            Console.WriteLine("Avg length: " + result.AverageRounds.ToString("0.0", CultureInfo.InvariantCulture)
                               + " rounds");
             Console.WriteLine();
             Console.WriteLine("Survival by character:");
 
-            var names = new List<string>(survivors.Keys);
-            names.Sort(StringComparer.Ordinal);
-            foreach (string characterId in names)
+            foreach (SweepSurvivorEntry entry in result.Survivors)
             {
-                Console.WriteLine("  " + characterId.PadRight(28) + Percent(survivors[characterId], options.Repeat));
+                Console.WriteLine("  " + entry.CharacterId.PadRight(28) + Percent(entry.Survived, result.Battles));
             }
 
             return 0;
