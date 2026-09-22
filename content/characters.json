@@ -155,7 +155,7 @@
       "name": "Dawn Cantor",
       "affinity": "Radiant",
       "role": "Mender",
-      "rarity": 4,
+      "rarity": 3,
       "evolveStage": 1,
       "baseStats": {
         "maxHp": 1100, "attack": 56, "magic": 140, "defense": 72,
@@ -380,7 +380,7 @@
       "name": "Shackleborn",
       "affinity": "Neutral",
       "role": "Controller",
-      "rarity": 3,
+      "rarity": 4,
       "evolveStage": 1,
       "baseStats": {
         "maxHp": 1300, "attack": 130, "magic": 44, "defense": 100,

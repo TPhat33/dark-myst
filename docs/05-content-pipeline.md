@@ -72,7 +72,7 @@ dotnet run --project tools/DarkMyst.SimRunner -- validate
 
 ## การกระจายเนื้อหา
 
-Content pack ถูกอัปโหลดขึ้น CDN เป็นโฟลเดอร์ต่อเวอร์ชัน (`/content/0.3.0/…`)
+Content pack ถูกอัปโหลดขึ้น CDN เป็นโฟลเดอร์ต่อเวอร์ชัน (`/content/0.4.0/…`)
 ไคลเอนต์ถาม API ว่าควรใช้เวอร์ชันใด ดาวน์โหลด แคชไว้ แล้วโหลดผ่าน `ContentPack.Load()`
 ตัวเดียวกับที่ใช้กับไฟล์ที่ฝังมาในแอป
 

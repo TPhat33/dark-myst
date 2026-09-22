@@ -27,7 +27,7 @@ namespace DarkMyst.Content.Tests
                 OwnerId = owner,
                 CharacterId = characterId,
                 Level = level,
-                ContentVersion = "0.3.0",
+                ContentVersion = "0.4.0",
                 IsLocked = locked,
                 IsInUse = inUse
             };

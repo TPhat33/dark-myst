@@ -33,7 +33,7 @@
     {
       "id": "enm_crypt_acolyte",
       "name": "Crypt Acolyte",
-      "affinity": "Umbral",
+      "affinity": "Radiant",
       "stats": {
         "maxHp": 720, "attack": 44, "magic": 116, "defense": 52,
         "resist": 92, "speed": 92, "critRate": 20, "critDamage": 0
@@ -72,6 +72,16 @@
         "skl_revenant_wrath", "skl_stunning_blow", "skl_basic_strike",
         "skl_revenant_second_wind", "skl_dying_curse"
       ]
+    },
+    {
+      "id": "enm_drowned_warden",
+      "name": "Drowned Warden",
+      "affinity": "Tide",
+      "stats": {
+        "maxHp": 760, "attack": 40, "magic": 122, "defense": 50,
+        "resist": 86, "speed": 90, "critRate": 20, "critDamage": 0
+      },
+      "skillIds": ["skl_undertow_shred", "skl_basic_bolt"]
     }
   ]
 }
