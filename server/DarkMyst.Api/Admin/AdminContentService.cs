@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using DarkMyst.Api.Content;
 using DarkMyst.Api.Data;
 using DarkMyst.Api.Data.Entities;
+using DarkMyst.Combat.Model;
 using DarkMyst.Content;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
@@ -61,12 +62,16 @@ namespace DarkMyst.Api.Admin
         {
             ContentPack pack = _registry.Latest;
             List<CharacterData> characters = pack.Characters.OrderBy(c => c.Id, StringComparer.Ordinal).ToList();
+            List<SkillDefinition> skills = pack.Skills.OrderBy(s => s.Id, StringComparer.Ordinal).ToList();
+            List<EnemyData> enemies = pack.Enemies.OrderBy(e => e.Id, StringComparer.Ordinal).ToList();
+            List<EncounterData> encounters = pack.Encounters.OrderBy(e => e.Id, StringComparer.Ordinal).ToList();
             List<string> rollbackable = ListSnapshotVersions()
                 .Where(v => !string.Equals(v, pack.Version, StringComparison.Ordinal))
                 .OrderByDescending(v => v, StringComparer.Ordinal)
                 .ToList();
 
-            return new AdminContentCurrentResponse(pack.Version, pack.Manifest.RulesVersion, characters, rollbackable);
+            return new AdminContentCurrentResponse(
+                pack.Version, pack.Manifest.RulesVersion, characters, skills, enemies, encounters, rollbackable);
         }
 
         /// <summary>Every version with a full snapshot under <c>content/_history/</c> — every
@@ -84,11 +89,13 @@ namespace DarkMyst.Api.Admin
             return Directory.GetDirectories(HistoryRoot).Select(Path.GetFileName).ToList();
         }
 
-        public AdminValidateResponse Validate(List<CharacterData> characters)
+        public AdminValidateResponse Validate(
+            List<CharacterData> characters, List<SkillDefinition> skills, List<EnemyData> enemies,
+            List<EncounterData> encounters)
         {
             try
             {
-                BuildStagedPack(characters, _registry.Latest, overrideVersion: null);
+                BuildStagedPack(characters, skills, enemies, encounters, _registry.Latest, overrideVersion: null);
                 return new AdminValidateResponse(true, Array.Empty<string>());
             }
             catch (ContentException ex)
@@ -98,7 +105,13 @@ namespace DarkMyst.Api.Admin
         }
 
         public async Task<AdminPublishResponse> PublishAsync(
-            string adminId, List<CharacterData> characters, string notes, CancellationToken ct)
+            string adminId,
+            List<CharacterData> characters,
+            List<SkillDefinition> skills,
+            List<EnemyData> enemies,
+            List<EncounterData> encounters,
+            string notes,
+            CancellationToken ct)
         {
             await PublishLock.WaitAsync(ct);
             try
@@ -107,25 +120,50 @@ namespace DarkMyst.Api.Admin
                 string oldVersion = current.Version;
                 string newVersion = NextUnusedVersion(oldVersion);
 
-                // Throws ContentException (no disk write happens first) if the edited characters,
-                // combined with every other unchanged content file, would not pass the same
+                // Throws ContentException (no disk write happens first) if whichever type(s) were
+                // edited, combined with every other unchanged content file, would not pass the same
                 // Validate() the server and CI already run. This is the "no override flag" rule:
                 // there is no code path from here to a disk write that skips this call.
-                BuildStagedPack(characters, current, newVersion);
+                BuildStagedPack(characters, skills, enemies, encounters, current, newVersion);
 
                 SnapshotIfMissing(oldVersion);
 
                 string manifestJson = BuildManifestJson(current.Manifest, newVersion);
-                string charactersJson = SerializeCharacters(characters);
                 File.WriteAllText(Path.Combine(_root, "manifest.json"), manifestJson);
-                File.WriteAllText(Path.Combine(_root, current.Manifest.Characters), charactersJson);
+
+                // Only the type(s) this request actually edited get a new file written — every
+                // other content file is left exactly as it is on disk, matching what BuildStagedPack
+                // just validated against.
+                if (characters != null)
+                {
+                    File.WriteAllText(
+                        Path.Combine(_root, current.Manifest.Characters), SerializeNamedList("characters", characters));
+                }
+
+                if (skills != null)
+                {
+                    File.WriteAllText(
+                        Path.Combine(_root, current.Manifest.Skills), SerializeNamedList("skills", skills));
+                }
+
+                if (enemies != null)
+                {
+                    File.WriteAllText(
+                        Path.Combine(_root, current.Manifest.Enemies), SerializeNamedList("enemies", enemies));
+                }
+
+                if (encounters != null)
+                {
+                    File.WriteAllText(
+                        Path.Combine(_root, current.Manifest.Encounters), SerializeNamedList("encounters", encounters));
+                }
 
                 // Snapshot the version we just published too, so a later rollback can always reach
                 // it again even after further publishes move content/ on past it.
                 SnapshotIfMissing(newVersion);
 
-                // Re-read from disk rather than trust the in-memory `characters` list: this is what
-                // proves content/ itself changed, not just this request's view of it.
+                // Re-read from disk rather than trust any in-memory list: this is what proves
+                // content/ itself changed, not just this request's view of it.
                 ContentPack fresh = ContentPack.LoadFromDirectory(_root);
                 _registry.Register(fresh);
                 _registry.SetLatest(newVersion);
@@ -142,7 +180,10 @@ namespace DarkMyst.Api.Admin
                 _db.ContentPublishes.Add(audit);
                 await _db.SaveChangesAsync(ct);
 
-                return new AdminPublishResponse(newVersion, oldVersion, characters.Count, audit.CreatedAt);
+                return new AdminPublishResponse(
+                    newVersion, oldVersion,
+                    fresh.Characters.Count, fresh.Skills.Count, fresh.Enemies.Count, fresh.Encounters.Count,
+                    audit.CreatedAt);
             }
             finally
             {
@@ -275,15 +316,23 @@ namespace DarkMyst.Api.Admin
             }
         }
 
-        /// <summary>Builds a full in-memory <see cref="ContentPack"/> — edited characters plus
-        /// every other file read straight off disk — and validates it. This is the one path
-        /// both <see cref="Validate"/> and <see cref="PublishAsync"/> go through, so a publish can
-        /// never see a looser check than the validate button did.</summary>
-        private ContentPack BuildStagedPack(List<CharacterData> characters, ContentPack basePack, string overrideVersion)
+        /// <summary>Builds a full in-memory <see cref="ContentPack"/> — whichever type(s) were
+        /// edited plus every other file read straight off disk — and validates it. This is the one
+        /// path both <see cref="Validate"/> and <see cref="PublishAsync"/> go through, so a publish
+        /// can never see a looser check than the validate button did.</summary>
+        private ContentPack BuildStagedPack(
+            List<CharacterData> characters,
+            List<SkillDefinition> skills,
+            List<EnemyData> enemies,
+            List<EncounterData> encounters,
+            ContentPack basePack,
+            string overrideVersion)
         {
             string manifestJson = BuildManifestJson(basePack.Manifest, overrideVersion ?? basePack.Version);
-            string charactersJson = SerializeCharacters(characters);
-            string charactersFileName = basePack.Manifest.Characters;
+            string charactersJson = characters != null ? SerializeNamedList("characters", characters) : null;
+            string skillsJson = skills != null ? SerializeNamedList("skills", skills) : null;
+            string enemiesJson = enemies != null ? SerializeNamedList("enemies", enemies) : null;
+            string encountersJson = encounters != null ? SerializeNamedList("encounters", encounters) : null;
 
             return ContentPack.Load(fileName =>
             {
@@ -292,9 +341,24 @@ namespace DarkMyst.Api.Admin
                     return manifestJson;
                 }
 
-                if (fileName == charactersFileName)
+                if (charactersJson != null && fileName == basePack.Manifest.Characters)
                 {
                     return charactersJson;
+                }
+
+                if (skillsJson != null && fileName == basePack.Manifest.Skills)
+                {
+                    return skillsJson;
+                }
+
+                if (enemiesJson != null && fileName == basePack.Manifest.Enemies)
+                {
+                    return enemiesJson;
+                }
+
+                if (encountersJson != null && fileName == basePack.Manifest.Encounters)
+                {
+                    return encountersJson;
                 }
 
                 string path = Path.Combine(_root, fileName);
@@ -302,9 +366,13 @@ namespace DarkMyst.Api.Admin
             });
         }
 
-        private static string SerializeCharacters(List<CharacterData> characters)
+        /// <summary>Serializes one content type's edited list back into the <c>{ "&lt;name&gt;":
+        /// [...] }</c> shape its file holds on disk (<c>ContentPack.Load</c>'s private
+        /// <c>SkillFile</c>/<c>CharacterFile</c>/<c>EnemyFile</c>/<c>EncounterFile</c> wrappers).</summary>
+        private static string SerializeNamedList<T>(string propertyName, List<T> items)
         {
-            return JsonConvert.SerializeObject(new { characters }, ContentPack.SerializerSettings);
+            var wrapper = new Dictionary<string, object> { [propertyName] = items };
+            return JsonConvert.SerializeObject(wrapper, ContentPack.SerializerSettings);
         }
 
         private static string BuildManifestJson(ContentManifest current, string version)

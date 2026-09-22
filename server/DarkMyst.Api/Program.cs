@@ -363,7 +363,7 @@ app.MapPost("/admin/content/validate", async (HttpContext http, ApiDbContext db,
 {
     await AdminAuth.RequireAdminAsync(http, db, ct);
     (AdminContentEditRequest request, _) = await ApiIo.ReadBodyAsync<AdminContentEditRequest>(http.Request, jsonOptions, ct);
-    return Results.Ok(content.Validate(request.Characters));
+    return Results.Ok(content.Validate(request.Characters, request.Skills, request.Enemies, request.Encounters));
 });
 
 app.MapPost("/admin/content/publish", async (HttpContext http, ApiDbContext db, AdminContentService content,
@@ -375,7 +375,8 @@ app.MapPost("/admin/content/publish", async (HttpContext http, ApiDbContext db, 
 
     IdempotencyOutcome outcome = await idempotency.ExecuteAsync(admin.Id, "admin/content/publish", key, raw, async () =>
     {
-        AdminPublishResponse response = await content.PublishAsync(admin.Id, request.Characters, request.Notes, ct);
+        AdminPublishResponse response = await content.PublishAsync(
+            admin.Id, request.Characters, request.Skills, request.Enemies, request.Encounters, request.Notes, ct);
         return new IdempotentOperationResult(200, response);
     }, ct);
 

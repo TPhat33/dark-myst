@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using DarkMyst.Combat.Model;
 using DarkMyst.Content;
 
 namespace DarkMyst.Api.Admin
@@ -18,26 +19,53 @@ namespace DarkMyst.Api.Admin
     /// ones with a publish/rollback audit row (see the "GET /admin/content/versions" record below).
     /// This includes the very first version the tool was ever pointed at: publishing snapshots the
     /// *outgoing* version too, before overwriting it, so even a baseline that predates this tool
-    /// entirely becomes reachable the moment anything is published on top of it.</summary>
+    /// entirely becomes reachable the moment anything is published on top of it.
+    /// <para>
+    /// Skills, enemies and encounters were added alongside characters in the same response
+    /// (docs/11-admin-spec.md): each editor tab loads everything once from here, then round-trips
+    /// only its own list back through validate/publish (see <see cref="AdminContentEditRequest"/>).
+    /// </para>
+    /// </summary>
     public sealed record AdminContentCurrentResponse(
-        string Version, string RulesVersion, List<CharacterData> Characters, List<string> RollbackableVersions);
+        string Version,
+        string RulesVersion,
+        List<CharacterData> Characters,
+        List<SkillDefinition> Skills,
+        List<EnemyData> Enemies,
+        List<EncounterData> Encounters,
+        List<string> RollbackableVersions);
 
     // ------------------------------------------------------------------
     // POST /admin/content/validate, POST /admin/content/publish
     // ------------------------------------------------------------------
 
     /// <summary>
-    /// The full, edited <c>characters.json</c> contents — not a patch. Scope for this round is one
-    /// content type (docs/11-admin-spec.md); the editor always round-trips the whole character
-    /// list, which is also exactly what keeps this endpoint from becoming a second, partial content
-    /// model: every request is validated as a complete <c>ContentPack</c>, the same way a hand-edit
-    /// of <c>characters.json</c> would be.
+    /// The full, edited contents of whichever content type's tab is dirty — not a patch, and not
+    /// necessarily every type at once. Exactly one of <see cref="Characters"/>,
+    /// <see cref="Skills"/>, <see cref="Enemies"/> and <see cref="Encounters"/> is populated by a
+    /// given editor tab; the others are left <c>null</c>, meaning "unchanged, read straight off
+    /// disk" (see <c>AdminContentService.BuildStagedPack</c>). Whichever list <em>is</em> present
+    /// is always the type's whole list, never a partial patch — the same rule characters has always
+    /// followed (docs/11-admin-spec.md) — so every request is still validated as one complete
+    /// <c>ContentPack</c>, the same way a hand-edit of the underlying JSON file would be.
     /// </summary>
-    public sealed record AdminContentEditRequest(List<CharacterData> Characters, string Notes);
+    public sealed record AdminContentEditRequest(
+        List<CharacterData> Characters,
+        List<SkillDefinition> Skills,
+        List<EnemyData> Enemies,
+        List<EncounterData> Encounters,
+        string Notes);
 
     public sealed record AdminValidateResponse(bool Valid, IReadOnlyList<string> Errors);
 
-    public sealed record AdminPublishResponse(string Version, string PreviousVersion, int CharacterCount, System.DateTimeOffset PublishedAt);
+    public sealed record AdminPublishResponse(
+        string Version,
+        string PreviousVersion,
+        int CharacterCount,
+        int SkillCount,
+        int EnemyCount,
+        int EncounterCount,
+        System.DateTimeOffset PublishedAt);
 
     // ------------------------------------------------------------------
     // POST /admin/content/rollback
