@@ -9,7 +9,7 @@
 ## เริ่มต้น
 
 ```bash
-dotnet test                                              # กฎเกม (129) + API กับ Postgres จริง (43) = 172 เคส
+dotnet test                                              # กฎเกม (132) + API กับ Postgres จริง (43) = 175 เคส
 dotnet run --project tools/DarkMyst.SimRunner -- validate # ตรวจ content pack
 ./tools/build-unity-plugins.sh                            # เตรียมโปรเจกต์ Unity
 

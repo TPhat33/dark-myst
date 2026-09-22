@@ -239,7 +239,7 @@ build เดียวกันชี้ไปเซิร์ฟเวอร์ d
 | `admin/tests/*.spec.ts` (vitest) | 24 | `diffCharacter`/`diffCharacterList`/`diffItem`/`diffList` (field เดี่ยว, array เป็น leaf เดียว, null vs blank, ชนิดทั่วไปที่มี `id`) และฟอร์มแก้ไขทั้งสี่ (`CharacterEditForm`, `SkillEditForm` รวม parse/error ของช่อง effects JSON, `EnemyEditForm` รวมค่า Affinity dropdown ที่ถูกต้อง, `EncounterEditForm` รวมเพิ่ม/ลบ unit) — v-model แก้ object จริงทุกตัว |
 | `admin/e2e/*.spec.ts` (Playwright, Chromium จริง) | 10 | วงจรเต็ม แก้→validate→publish→rollback ต่อชนิด (ตัวละคร, สกิล, ศัตรู, encounter) พิสูจน์ด้วยการอ่านไฟล์ `content/` บนดิสก์จริง; publish เนื้อหาเสียถูกปฏิเสธต่อชนิดทั้งใน UI และ response; player bearer token เข้า admin API ไม่ได้ทั้งสองรูปแบบ header; sweep จริงคืนตัวเลขจริง; repeat เกิน cap ถูกปฏิเสธและช่องกรอกถูกปรับให้เท่ากับ max จริงจากเซิร์ฟเวอร์ แล้วรันซ้ำที่ค่านั้นสำเร็จ |
 
-รวมของหน้าจัดการ: **25 เคส dotnet (172 รวมทั้งโปรเจกต์) + 24 เคส vitest + 10 เคส Playwright**
+รวมของหน้าจัดการ: **25 เคส dotnet (175 รวมทั้งโปรเจกต์) + 24 เคส vitest + 10 เคส Playwright**
 
 ทุกเทสต์ Playwright รันกับกระบวนการจริงล้วน: `DarkMyst.Api` (dotnet run จริง),
 PostgreSQL ฐานข้อมูลทิ้งต่อรัน (`admin/e2e/run-api.sh` สร้าง/ลบเอง ไม่แตะฐานข้อมูล dev

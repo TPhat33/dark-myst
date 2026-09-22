@@ -38,6 +38,12 @@ jobs:
       - name: Validate the content pack
         run: dotnet run --project tools/DarkMyst.SimRunner -c Release --no-build -- validate
 
+      # Human-readable companion to tests/DarkMyst.Content.Tests/RosterShapeTests.cs, which is
+      # what actually fails the build red — this just puts the counts in the log so a lopsided
+      # roster shows up in the CI output even before someone opens the failing assertion.
+      - name: Roster composition
+        run: dotnet run --project tools/DarkMyst.SimRunner -c Release --no-build -- roster
+
       # A rule change that quietly makes an encounter unwinnable should show up in review,
       # not in a player's session.
       - name: Balance sweep

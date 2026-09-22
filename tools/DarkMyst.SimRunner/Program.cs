@@ -24,6 +24,12 @@ namespace DarkMyst.SimRunner
     /// (or against each other) and print a roster × opponent table, to answer "is there a
     /// dominant team", "is any of the roster dead content" and "is a loss recoverable" with
     /// numbers instead of a feeling. See <c>docs/07-testing-plan.md</c>.</description></item>
+    /// <item><description><c>roster</c> — print the content pack's composition (affinity ×
+    /// playable line, affinity × enemy unit, role × rarity) so a shape like "every enemy is
+    /// Umbral" or "the top rarity tier is all Menders" is visible before it ships, not after
+    /// someone measures a 30-point win-rate swing. Enforced in CI by
+    /// <c>DarkMyst.Content.Tests/RosterShapeTests.cs</c>; this command is the human-readable
+    /// view of the same counts.</description></item>
     /// </list>
     /// </summary>
     public static class Program
@@ -79,6 +85,9 @@ namespace DarkMyst.SimRunner
 
                 case "matrix":
                     return RunMatrix(pack, options);
+
+                case "roster":
+                    return RunRoster(pack);
 
                 default:
                     Console.Error.WriteLine("Unknown command '" + options.Command + "'.");
@@ -260,6 +269,170 @@ namespace DarkMyst.SimRunner
             }
 
             return 0;
+        }
+
+        // ------------------------------------------------------------------
+        // roster
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// Prints the content pack's composition along the three axes a designer needs to check
+        /// before adding a character: affinity coverage on both sides of the fight (can every
+        /// affinity actually attack and be attacked with advantage somewhere), and which role
+        /// sits at the top rarity tier (the tier a summon system would pull from most, so
+        /// concentrating it on one role is a pay-to-win shape even when nobody intends it — see
+        /// docs/07-testing-plan.md). Scoped to <em>stage-I</em> characters for the line/rarity
+        /// axes: a stage II/III form is reached by evolving, never pulled or rewarded directly
+        /// (see <c>drop_ashfields_treasure</c> in stages.json, which only ever grants a stage-I
+        /// id), so it is not part of "what a player can obtain" and would only dilute the count
+        /// that actually matters for pull-rate fairness.
+        /// </summary>
+        private static int RunRoster(ContentPack pack)
+        {
+            List<CharacterData> stageOneLines = StageOneCharacters(pack);
+
+            Console.WriteLine("Roster composition (content " + pack.Version + ")");
+            Console.WriteLine(new string('=', 40));
+            Console.WriteLine();
+
+            PrintAffinityLines(stageOneLines);
+            Console.WriteLine();
+            PrintAffinityEnemies(pack);
+            Console.WriteLine();
+            PrintRoleByRarity(stageOneLines);
+
+            return 0;
+        }
+
+        private static List<CharacterData> StageOneCharacters(ContentPack pack)
+        {
+            var lines = new List<CharacterData>();
+            foreach (CharacterData character in pack.Characters)
+            {
+                if (character.EvolveStage == 1)
+                {
+                    lines.Add(character);
+                }
+            }
+
+            lines.Sort((a, b) => string.CompareOrdinal(a.Id, b.Id));
+            return lines;
+        }
+
+        private static void PrintAffinityLines(List<CharacterData> stageOneLines)
+        {
+            var byAffinity = new Dictionary<Affinity, List<string>>();
+            foreach (Affinity affinity in (Affinity[])Enum.GetValues(typeof(Affinity)))
+            {
+                byAffinity[affinity] = new List<string>();
+            }
+
+            foreach (CharacterData line in stageOneLines)
+            {
+                byAffinity[line.Affinity].Add(line.Name);
+            }
+
+            Console.WriteLine(
+                "Affinity x playable stage-I lines (" + stageOneLines.Count
+                + " lines — what a summon or reward can hand a player):");
+            foreach (Affinity affinity in (Affinity[])Enum.GetValues(typeof(Affinity)))
+            {
+                List<string> names = byAffinity[affinity];
+                Console.WriteLine(
+                    "  " + affinity.ToString().PadRight(10) + names.Count.ToString().PadLeft(3) + "  "
+                    + (names.Count == 0 ? "(none)" : string.Join(", ", names)));
+            }
+        }
+
+        private static void PrintAffinityEnemies(ContentPack pack)
+        {
+            var counts = new Dictionary<Affinity, int>();
+            foreach (Affinity affinity in (Affinity[])Enum.GetValues(typeof(Affinity)))
+            {
+                counts[affinity] = 0;
+            }
+
+            int total = 0;
+            foreach (EncounterData encounter in pack.Encounters)
+            {
+                foreach (EncounterUnitData unit in encounter.Units)
+                {
+                    EnemyData enemy = pack.GetEnemy(unit.EnemyId);
+                    counts[enemy.Affinity]++;
+                    total++;
+                }
+            }
+
+            Console.WriteLine(
+                "Affinity x enemy units (every unit in every encounter, " + total + " total):");
+            foreach (Affinity affinity in (Affinity[])Enum.GetValues(typeof(Affinity)))
+            {
+                int count = counts[affinity];
+                double share = total == 0 ? 0.0 : count * 100.0 / total;
+                Console.WriteLine(
+                    "  " + affinity.ToString().PadRight(10) + count.ToString().PadLeft(3) + "  "
+                    + share.ToString("0.0", CultureInfo.InvariantCulture).PadLeft(5) + "%");
+            }
+        }
+
+        private static void PrintRoleByRarity(List<CharacterData> stageOneLines)
+        {
+            var byRarity = new SortedDictionary<int, Dictionary<string, int>>();
+            int topRarity = 0;
+            foreach (CharacterData line in stageOneLines)
+            {
+                if (!byRarity.TryGetValue(line.Rarity, out Dictionary<string, int> roles))
+                {
+                    roles = new Dictionary<string, int>(StringComparer.Ordinal);
+                    byRarity[line.Rarity] = roles;
+                }
+
+                roles.TryGetValue(line.Role, out int soFar);
+                roles[line.Role] = soFar + 1;
+
+                if (line.Rarity > topRarity)
+                {
+                    topRarity = line.Rarity;
+                }
+            }
+
+            Console.WriteLine("Role x rarity (stage-I lines only):");
+            foreach (KeyValuePair<int, Dictionary<string, int>> tier in byRarity)
+            {
+                var roleNames = new List<string>(tier.Value.Keys);
+                roleNames.Sort(StringComparer.Ordinal);
+
+                var parts = new List<string>();
+                foreach (string role in roleNames)
+                {
+                    parts.Add(role + " x" + tier.Value[role]);
+                }
+
+                string marker = tier.Key == topRarity ? "  <- top tier" : "";
+                Console.WriteLine("  rarity " + tier.Key + ": " + string.Join(", ", parts) + marker);
+            }
+
+            if (byRarity.TryGetValue(topRarity, out Dictionary<string, int> topRoles))
+            {
+                int tierTotal = 0;
+                int maxInOneRole = 0;
+                foreach (int roleCount in topRoles.Values)
+                {
+                    tierTotal += roleCount;
+                    if (roleCount > maxInOneRole)
+                    {
+                        maxInOneRole = roleCount;
+                    }
+                }
+
+                double concentration = tierTotal == 0 ? 0.0 : maxInOneRole * 100.0 / tierTotal;
+                Console.WriteLine();
+                Console.WriteLine(
+                    "Top rarity tier (" + topRarity + "): " + tierTotal + " line(s) across "
+                    + topRoles.Count + " role(s), most-concentrated role is "
+                    + concentration.ToString("0.0", CultureInfo.InvariantCulture)
+                    + "% of the tier.");
+            }
         }
 
         // ------------------------------------------------------------------
@@ -809,6 +982,7 @@ Commands
   sweep                    Run many seeds and report win rate, length and survival.
   expedition               Auto-play one expedition stage, or sweep many seeds of it.
   matrix                   Run named rosters against encounters (or each other) and print a table.
+  roster                   Print the content pack's affinity/role/rarity composition.
 
 Options
   --content <dir>          Content directory (default: ./content)
@@ -825,6 +999,7 @@ Options
 
 Examples
   simrunner validate
+  simrunner roster
   simrunner battle --encounter enc_boss_ashen_revenant --seed 20260920
   simrunner sweep  --encounter enc_crypt_patrol --repeat 500
   simrunner expedition --stage stg_ashfields --seed 20260920
