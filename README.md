@@ -9,12 +9,12 @@
 ## เริ่มต้น
 
 ```bash
-dotnet test                                              # กฎเกม (123) + API กับ Postgres จริง (31) = 154 เคส
+dotnet test                                              # กฎเกม (129) + API กับ Postgres จริง (43) = 172 เคส
 dotnet run --project tools/DarkMyst.SimRunner -- validate # ตรวจ content pack
 ./tools/build-unity-plugins.sh                            # เตรียมโปรเจกต์ Unity
 
-cd admin && npm ci && npm run build && npm test           # หน้าจัดการ: build + เทสต์หน่วย (9 เคส)
-npm run test:e2e                                          # Playwright กับ API/เซิร์ฟเวอร์จริง (2 เคส)
+cd admin && npm ci && npm run build && npm test           # หน้าจัดการ: build + เทสต์หน่วย (24 เคส)
+npm run test:e2e                                          # Playwright กับ API/เซิร์ฟเวอร์จริง (10 เคส)
 ```
 
 ต้องมี .NET SDK 8 สำหรับส่วนกฎเกมและ backend, Unity 2022.3 LTS สำหรับตัวเกม, PostgreSQL 16
@@ -59,8 +59,9 @@ dotnet run --project tools/DarkMyst.SimRunner -- matrix --level 12 --repeat 300 
 src/DarkMyst.Combat/       กฎการต่อสู้ — ไม่มี dependency, ไม่รู้จัก Unity, เลขจำนวนเต็มล้วน
 src/DarkMyst.Content/      content pack, สูตรเลเวลและ evolve
 src/DarkMyst.Expedition/   ระบบสำรวจ (ฟาร์ม) — แผนที่จุดเชื่อม บัฟเฉพาะรอบ ต่อยอดจากทั้งสองข้างบน
-server/DarkMyst.Api/       Game API (ระยะ D) — บัญชี evolve การสำรวจ อ้างอิงสามไลบรารีข้างบน
-admin/                     หน้าจัดการเนื้อหา (Vue 3 + TypeScript) — แก้/validate/publish/rollback ผ่าน Game API
+src/DarkMyst.Sim/          ไลบรารี battle sweep ที่ simrunner และปุ่ม sweep ของหน้าจัดการใช้ร่วมกัน
+server/DarkMyst.Api/       Game API (ระยะ D) — บัญชี evolve การสำรวจ อ้างอิงไลบรารีข้างบนทั้งหมด
+admin/                     หน้าจัดการเนื้อหา (Vue 3 + TypeScript) — แก้ตัวละคร/สกิล/ศัตรู/encounter, sweep, validate/publish/rollback ผ่าน Game API
 tests/                     เทสต์ของกฎทั้งหมด + เทสต์ API กับ Postgres จริง
 tools/DarkMyst.SimRunner/  CLI: validate / battle / sweep / expedition / matrix
 content/                   ข้อมูลเกมทั้งหมดเป็น JSON — แหล่งความจริงชุดเดียว

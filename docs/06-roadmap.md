@@ -81,11 +81,18 @@
   admin แยกจาก player bearer token โดยสิ้นเชิง — ดู [11-admin-spec.md](11-admin-spec.md)
 - ✅ Playwright สำหรับหน้าจัดการ ([07-testing-plan.md](07-testing-plan.md)) — วงจร
   แก้→validate→publish→rollback เต็มรูปแบบ พิสูจน์ด้วยการอ่านไฟล์ `content/` บนดิสก์จริง
+- ✅ หน้าจัดการแก้สกิล ศัตรู และ encounter ได้แล้ว (นอกเหนือจากตัวละคร) ผ่าน endpoint ชุดเดียวกัน
+  ที่ขยายให้รับได้ทั้งสี่ชนิด และปุ่ม `sweep` เชื่อมเข้าเว็บแล้ว — รันผ่านไลบรารีที่แยกออกมา
+  ใช้ร่วมกับ `simrunner sweep` (`DarkMyst.Sim`), จำกัด repeat และรัน sweep ได้ทีละหนึ่งเท่านั้น
+  — ดู [11-admin-spec.md](11-admin-spec.md)
 
 เหลือ:
 
-- [ ] เนื้อหาชนิดอื่นนอกจากตัวละคร (สกิล ศัตรู ด่าน) และปุ่ม `sweep` ในหน้าจัดการ — ดู
-  [11-admin-spec.md](11-admin-spec.md) "สิ่งที่ตั้งใจตัดออก"
+- [ ] ด่านสำรวจ/ตารางรางวัล/เหตุการณ์ (`stages.json`) ในหน้าจัดการ — รูปทรงซับซ้อนที่สุด
+  (ชั้น/น้ำหนัก/สระ) ยังแก้ผ่าน JSON ตรง ๆ เหมือนเดิม — ดู [11-admin-spec.md](11-admin-spec.md)
+  "สิ่งที่ตั้งใจตัดออก"
+- [ ] diff แบบภาพและ diff ของสกิล/ศัตรู/ด่าน (ตอนนี้ `GET /admin/content/diff` เทียบสองเวอร์ชัน
+  ได้แค่ตัวละคร) — ดู [11-admin-spec.md](11-admin-spec.md) "สิ่งที่ตั้งใจตัดออก"
 - [ ] real auth (Apple/Google Sign-In จริงแทน `StubIdentityProvider`) — งานที่ตั้งใจเลื่อนไป
   พร้อมระบบซื้อในแอปของระยะ E เพราะทั้งสองอย่างต้องมีบัญชีจริงถึงจะมีความหมาย (ครอบคลุมทั้ง
   player auth และ admin auth — ดู [11-admin-spec.md](11-admin-spec.md))

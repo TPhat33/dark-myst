@@ -11,10 +11,11 @@ dotnet test
 | `DarkMyst.Combat.Tests` | 55 | สูตรความเสียหาย ความแน่นอนของผล ลำดับ ตำแหน่ง สถานะ ความตาย การตรวจสอบข้อมูล, HP เริ่มต้นบางส่วน (`StartingHp`) |
 | `DarkMyst.Content.Tests` | 48 | การโหลดเนื้อหา สูตรเลเวล กฎ evolve และทุกกรณีที่ต้องปฏิเสธ, การตรวจสอบด่านสำรวจ/ตารางรางวัล/เหตุการณ์, ขนาดและความครบของโรสเตอร์ (12-16 สาย, ทุกธาตุมีอย่างน้อยหนึ่งสาย) |
 | `DarkMyst.Expedition.Tests` | 20 | การสร้างแผนที่, seed ต่อจุด, HP ติดตัวข้ามจุด, บัฟเฉพาะรอบ, รางวัล, แพ้/ชนะ, serialize/resume, การกำหนดเวอร์ชัน |
-| `DarkMyst.Api.Tests` | 31 | **Integration ทั้งหมดกับ PostgreSQL จริง** (ไม่มี mock, ไม่มี InMemory) — บัญชีและการเชื่อม, idempotency (เรียงลำดับและพร้อมกันจริง, รวมการ replay ของ `/debug/grant-*`), evolve (รวม concurrency แย่งวัตถุดิบ, ล็อกระหว่าง preview/confirm), การสำรวจ (concurrency, การกำหนดเวอร์ชัน content), การกระทบยอดบัญชีแยกประเภท, `/health` (ต่อ DB ได้/ไม่ได้) — ดู [10-backend-spec.md](10-backend-spec.md); gate การยืนยันตัวตนของ admin และ publish/validate/rollback/diff ของหน้าจัดการ (13 เคส) — ดู [11-admin-spec.md](11-admin-spec.md) |
+| `DarkMyst.Sim.Tests` | 6 | `DarkMyst.Sim.BattleSweepRunner` — ไลบรารี sweep ที่ใช้ร่วมกันทั้ง `simrunner sweep` และปุ่ม sweep ของหน้าจัดการ (ดู [11-admin-spec.md](11-admin-spec.md)): อัตราชนะ/การรอดชีวิตจริงจาก content จริง, ผลซ้ำได้ด้วย seed เดิม, ปฏิเสธ encounter/ตัวละครที่ไม่มีจริง, ปฏิเสธ repeat ที่ไม่เป็นบวกและ roster ว่าง |
+| `DarkMyst.Api.Tests` | 43 | **Integration ทั้งหมดกับ PostgreSQL จริง** (ไม่มี mock, ไม่มี InMemory) — บัญชีและการเชื่อม, idempotency (เรียงลำดับและพร้อมกันจริง, รวมการ replay ของ `/debug/grant-*`), evolve (รวม concurrency แย่งวัตถุดิบ, ล็อกระหว่าง preview/confirm), การสำรวจ (concurrency, การกำหนดเวอร์ชัน content), การกระทบยอดบัญชีแยกประเภท, `/health` (ต่อ DB ได้/ไม่ได้) — ดู [10-backend-spec.md](10-backend-spec.md); ส่วนหน้าจัดการ 25 เคส — gate การยืนยันตัวตนของ admin (5), publish/validate/rollback/diff ของตัวละคร (8), ของสกิล/ศัตรู/ด่าน (7), ปุ่ม sweep — bound ของ repeat, ล็อกไม่ให้ sweep ซ้อนกัน, ปฏิเสธ encounter ที่ไม่มีจริง, player token เข้าไม่ได้ (5) — ดู [11-admin-spec.md](11-admin-spec.md) |
 
-รวม **154 เคส** (123 กฎเกม + 31 API รวมหน้าจัดการ) บวกฝั่งหน้าจัดการเอง: **9 เคส vitest** (หน่วย
-+ component) และ **2 เคส Playwright** (จบวงจรจริงกับ Chromium — ดู [11-admin-spec.md](11-admin-spec.md))
+รวม **172 เคส** (129 กฎเกม + 43 API รวมหน้าจัดการ) บวกฝั่งหน้าจัดการเอง: **24 เคส vitest** (หน่วย
++ component) และ **10 เคส Playwright** (จบวงจรจริงกับ Chromium — ดู [11-admin-spec.md](11-admin-spec.md))
 
 ## สิ่งที่ต้องพิสูจน์ในแต่ละกลุ่ม
 
@@ -35,7 +36,7 @@ dotnet test
 | ชั้น | เครื่องมือ |
 | --- | --- |
 | กฎเกม | xUnit (`dotnet test`) |
-| สมดุล | `simrunner sweep` — รันหลายพัน seed แล้วดูอัตราชนะ ต่อทีมเดียว; `simrunner matrix` — รันหลายทีมกับหลายด่าน (หรือกับกันเอง) พร้อมกัน แล้วพิมพ์เป็นตาราง |
+| สมดุล | `simrunner sweep` — รันหลายพัน seed แล้วดูอัตราชนะ ต่อทีมเดียว (ตัวลูปเดียวกับที่ปุ่ม sweep ของหน้าจัดการเรียก ผ่าน `DarkMyst.Sim.BattleSweepRunner` — ดู [11-admin-spec.md](11-admin-spec.md)); `simrunner matrix` — รันหลายทีมกับหลายด่าน (หรือกับกันเอง) พร้อมกัน แล้วพิมพ์เป็นตาราง |
 | Backend | `dotnet test tests/DarkMyst.Api.Tests` — xUnit + PostgreSQL จริงต่อคลาสเทสต์ (ดู [10-backend-spec.md](10-backend-spec.md)) |
 | หน้าจัดการ | `npm test` (vitest, หน่วย + component) และ `npm run test:e2e` (Playwright, Chromium จริงกับ API/เซิร์ฟเวอร์ที่รันจริง) — ดู [11-admin-spec.md](11-admin-spec.md) |
 | ตัวเกม | Unity Test Framework + **อุปกรณ์จริง** |

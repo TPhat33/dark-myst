@@ -83,12 +83,13 @@ Pack ที่ฝังมาในแอปเป็น fallback — ผู้�
 
 รายละเอียดทั้งหมดอยู่ที่ [11-admin-spec.md](11-admin-spec.md) สรุปสถานะ:
 
-- ✅ หน้าจัดการ (Vue 3 + TS, `admin/`) — แก้ตัวละคร, validate, publish, rollback, ดู diff
-  ระหว่างเวอร์ชัน ผ่าน `server/DarkMyst.Api/` endpoint ที่แก้ `content/` ชุดเดียวกับที่ CI
-  และเกมอ่านเสมอ (`ContentPack.Validate()` เดียวกันทุกที่ ไม่มี flag ข้าม)
-- ✅ workflow เผยแพร่: แก้ → validate → ตรวจทาน (diff) → เผยแพร่ → ย้อนกลับได้ — ครบทุกขั้นยกเว้น
-  sweep ที่ยังไม่ต่อเป็นปุ่มในหน้าเว็บ
-- [ ] ปุ่มรัน `sweep` จากหน้าจัดการ — ยังต้องรัน `tools/DarkMyst.SimRunner -- sweep` จาก
-  บรรทัดคำสั่งเหมือนเดิม (เหตุผลและลำดับความสำคัญ: [11-admin-spec.md](11-admin-spec.md)
+- ✅ หน้าจัดการ (Vue 3 + TS, `admin/`) — แก้ตัวละคร สกิล ศัตรู และ encounter, validate, publish,
+  rollback, ดู diff ระหว่างเวอร์ชัน (ตัวละครเท่านั้น) ผ่าน `server/DarkMyst.Api/` endpoint ที่แก้
+  `content/` ชุดเดียวกับที่ CI และเกมอ่านเสมอ (`ContentPack.Validate()` เดียวกันทุกที่ ไม่มี flag
+  ข้าม)
+- ✅ workflow เผยแพร่ครบทุกขั้น: แก้ → validate → sweep → ตรวจทาน (diff) → เผยแพร่ → ย้อนกลับได้
+  — ปุ่ม sweep เรียกไลบรารีเดียวกับที่ `tools/DarkMyst.SimRunner -- sweep` เรียก
+  (`DarkMyst.Sim`), จำกัดจำนวน repeat และรันได้ทีละหนึ่ง sweep เท่านั้น
+- [ ] ด่านสำรวจ/ตารางรางวัล/เหตุการณ์ (`stages.json`) ในหน้าจัดการ — รูปทรงซับซ้อนที่สุด
+  ยังแก้ผ่าน JSON ตรง ๆ (เหตุผลและลำดับความสำคัญ: [11-admin-spec.md](11-admin-spec.md)
   "สิ่งที่ตั้งใจตัดออก")
-- [ ] เนื้อหาชนิดอื่นนอกจากตัวละคร (สกิล ศัตรู ด่าน) ในหน้าจัดการ — ยังแก้ผ่าน JSON ตรง ๆ

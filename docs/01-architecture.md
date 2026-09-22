@@ -33,7 +33,7 @@ flowchart TD
 | ระบบหลังบ้าน | ASP.NET Core (`server/DarkMyst.Api/`) | บัญชี การสำรวจ evolve รางวัล — ร้านค้ายังไม่ทำ (ระยะ E), ดู [10-backend-spec.md](10-backend-spec.md) |
 | ฐานข้อมูล | PostgreSQL | ข้อมูลถาวรและธุรกรรม |
 | ไฟล์เนื้อหา | Object storage + CDN | ภาพ เสียง และ content pack แต่ละเวอร์ชัน |
-| หน้าจัดการ | Vue 3 + TypeScript | แก้ตัวละคร validate/publish/rollback ผ่าน Game API — ดู [11-admin-spec.md](11-admin-spec.md) |
+| หน้าจัดการ | Vue 3 + TypeScript | แก้ตัวละคร/สกิล/ศัตรู/encounter, sweep, validate/publish/rollback ผ่าน Game API — ดู [11-admin-spec.md](11-admin-spec.md) |
 | ปฏิบัติการ | Managed hosting + logging + backups | ดูแลระบบโดยลดภาระเซิร์ฟเวอร์ |
 
 เริ่มจาก backend **ชุดเดียวที่แบ่งโมดูลภายใน** ยังไม่ต้องแยก microservices หรือใช้ Kubernetes
@@ -46,9 +46,10 @@ DarkMyst.sln
 src/DarkMyst.Combat/      กฎการต่อสู้ — ไม่มี dependency, ไม่รู้จัก Unity
 src/DarkMyst.Content/     content pack, สูตรเลเวลและ evolve
 src/DarkMyst.Expedition/  ระบบสำรวจ (ฟาร์ม) — ต่อยอด Combat + Content, ไม่รู้จัก Unity
+src/DarkMyst.Sim/         ไลบรารี battle sweep ที่ simrunner และปุ่ม sweep ของหน้าจัดการใช้ร่วมกัน
 server/DarkMyst.Api/      Game API (ระยะ D) — ดู 10-backend-spec.md
 admin/                    หน้าจัดการเนื้อหา (Vue 3 + TypeScript) — ดู 11-admin-spec.md
-tests/                    เทสต์ของกฎทั้งหมด (123 เคส) + เทสต์ API กับ Postgres จริง (31 เคส)
+tests/                    เทสต์ของกฎทั้งหมด (129 เคส) + เทสต์ API กับ Postgres จริง (43 เคส)
 tools/DarkMyst.SimRunner/ CLI: validate / battle / sweep / expedition / matrix
 tools/build-unity-plugins.sh
 content/                  ข้อมูลเกมทั้งหมดเป็น JSON — แหล่งความจริงชุดเดียว
