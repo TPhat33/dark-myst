@@ -74,3 +74,4 @@ milestone แรกคือผู้เล่นพูดได้ว่า *"�
 | [09-expedition-spec.md](09-expedition-spec.md) | ระบบสำรวจ: แผนที่จุดเชื่อม การสุ่มที่ตรวจสอบได้ บัฟเฉพาะรอบ |
 | [10-backend-spec.md](10-backend-spec.md) | Game API (ระยะ D): endpoint, สัญญา idempotency, ขอบเขตธุรกรรม, การเชื่อมบัญชี |
 | [11-admin-spec.md](11-admin-spec.md) | หน้าจัดการเนื้อหา (ระยะ D): endpoint, gate การยืนยันตัวตนของ admin, สัญญาการเผยแพร่/ย้อนกลับ |
+| [12-summon-spec.md](12-summon-spec.md) | ระบบสุ่มตัวละคร: โครงชั้นและ pity, ตัวซ้ำ → Attune, แผนปล่อยเนื้อหา, telemetry ของตัวละคร |

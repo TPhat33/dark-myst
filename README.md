@@ -106,6 +106,7 @@ docs/                      เอกสารออกแบบ
 | [09 ระบบสำรวจ](docs/09-expedition-spec.md) | แผนที่จุดเชื่อม การสุ่มที่ตรวจสอบได้ บัฟเฉพาะรอบ |
 | [10 Game API](docs/10-backend-spec.md) | Endpoint, สัญญา idempotency, ขอบเขตธุรกรรม, การเชื่อมบัญชี |
 | [11 หน้าจัดการ](docs/11-admin-spec.md) | Endpoint, gate การยืนยันตัวตนของ admin, สัญญาการเผยแพร่/ย้อนกลับ |
+| [12 ระบบสุ่มตัวละคร](docs/12-summon-spec.md) | โครงชั้นและ pity, ตัวซ้ำ → Attune, แผนปล่อยเนื้อหา, telemetry ของตัวละคร |
 
 ## ขั้นถัดไป
 
