@@ -66,6 +66,7 @@ builder.Services.AddScoped<ExpeditionService>();
 builder.Services.AddScoped<BattleService>();
 builder.Services.AddScoped<AdminAccountService>();
 builder.Services.AddScoped<AdminContentService>();
+builder.Services.AddScoped<AdminSweepService>();
 
 // The admin tool (admin/, a Vite dev server or a static build) is served from a different origin
 // than this API, so a browser calling /admin/* needs CORS allowed explicitly — nothing else in
@@ -395,6 +396,19 @@ app.MapPost("/admin/content/rollback", async (HttpContext http, ApiDbContext db,
     }, ct);
 
     return ApiIo.ToResult(outcome);
+});
+
+// Read-only, same as /admin/content/validate: a sweep never writes content/, so it needs no
+// Idempotency-Key and calling it twice in a row is always safe to retry (docs/11-admin-spec.md).
+// Bounded two ways inside AdminSweepService: a repeat cap (Admin:MaxSweepRepeat) and a
+// process-wide "one sweep at a time" lock, so this button cannot be used to pile up unbounded
+// CPU-heavy work on the server.
+app.MapPost("/admin/content/sweep", async (HttpContext http, ApiDbContext db, AdminSweepService sweeps, CancellationToken ct) =>
+{
+    await AdminAuth.RequireAdminAsync(http, db, ct);
+    (AdminSweepRequest request, _) = await ApiIo.ReadBodyAsync<AdminSweepRequest>(http.Request, jsonOptions, ct);
+    DarkMyst.Sim.SweepResult result = await sweeps.RunAsync(request, ct);
+    return Results.Ok(AdminSweepService.ToResponse(result, sweeps.MaxRepeat));
 });
 
 // ---------------------------------------------------------------------------

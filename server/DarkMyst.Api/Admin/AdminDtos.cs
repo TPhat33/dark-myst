@@ -64,4 +64,30 @@ namespace DarkMyst.Api.Admin
 
     public sealed record AdminContentDiffResponse(
         string From, string To, List<string> AddedCharacterIds, List<string> RemovedCharacterIds, List<AdminCharacterDiff> ChangedCharacters);
+
+    // ------------------------------------------------------------------
+    // POST /admin/content/sweep
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// A battle sweep against the currently published content — the same shape
+    /// <c>simrunner sweep</c> takes on the command line (docs/07-testing-plan.md), run through the
+    /// shared <c>DarkMyst.Sim.BattleSweepRunner</c> (docs/11-admin-spec.md "sweep button"). Level,
+    /// seed and repeat all default the same way the CLI does; <c>Repeat</c> is additionally capped
+    /// server-side (see <see cref="AdminSweepService"/>) since this one is reachable from a browser
+    /// button rather than typed by hand.
+    /// </summary>
+    public sealed record AdminSweepRequest(
+        string EncounterId, List<string> Roster, int Level = 20, ulong Seed = 1, int Repeat = 200);
+
+    public sealed record AdminSweepSurvivorEntry(string CharacterId, int Survived);
+
+    public sealed record AdminSweepResponse(
+        string EncounterId,
+        int Battles,
+        int Wins,
+        int Draws,
+        double AverageRounds,
+        List<AdminSweepSurvivorEntry> Survivors,
+        int MaxRepeat);
 }

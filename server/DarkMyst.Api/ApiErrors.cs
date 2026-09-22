@@ -1,4 +1,5 @@
 using System;
+using DarkMyst.Api.Admin;
 using DarkMyst.Api.Battles;
 using DarkMyst.Api.Content;
 using DarkMyst.Api.Evolve;
@@ -49,6 +50,23 @@ namespace DarkMyst.Api
 
                 case IdempotencyKeyReusedException keyReused:
                     return (409, new { error = "idempotency_key_reused", message = keyReused.Message });
+
+                // AdminSweepService: at most one sweep runs at a time process-wide, and a click
+                // while one is already in flight is refused rather than queued or run alongside it
+                // (docs/11-admin-spec.md "sweep button").
+                case SweepAlreadyRunningException sweepRunning:
+                    return (409, new { error = "sweep_in_progress", message = sweepRunning.Message });
+
+                // AdminSweepService: a repeat above Admin:MaxSweepRepeat is refused before any
+                // battle runs, not silently clamped, so a designer knows their request was capped.
+                case SweepRepeatTooLargeException sweepTooLarge:
+                    return (400, new
+                    {
+                        error = "sweep_repeat_too_large",
+                        message = sweepTooLarge.Message,
+                        requested = sweepTooLarge.Requested,
+                        max = sweepTooLarge.Max
+                    });
 
                 case ArgumentException argument:
                     return (400, new { error = "bad_request", message = argument.Message });

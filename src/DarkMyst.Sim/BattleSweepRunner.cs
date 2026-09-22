@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using DarkMyst.Combat;
 using DarkMyst.Combat.Model;
 using DarkMyst.Content;
@@ -63,7 +64,13 @@ namespace DarkMyst.Sim
     /// </summary>
     public static class BattleSweepRunner
     {
-        public static SweepResult Run(ContentPack pack, SweepRequest request)
+        /// <summary>
+        /// Runs the sweep. <paramref name="ct"/> is checked once per battle so a caller running
+        /// this off a web request (the admin sweep button) can stop a long sweep early the moment
+        /// the client disconnects or the request is cancelled, instead of a stray sweep spinning
+        /// on the thread pool for its whole configured repeat count regardless.
+        /// </summary>
+        public static SweepResult Run(ContentPack pack, SweepRequest request, CancellationToken ct = default)
         {
             if (pack == null)
             {
@@ -105,6 +112,8 @@ namespace DarkMyst.Sim
 
             for (int i = 0; i < request.Repeat; i++)
             {
+                ct.ThrowIfCancellationRequested();
+
                 BattleResult result = BattleSimulator.Run(new BattleRequest
                 {
                     Seed = request.Seed + (ulong)i,
