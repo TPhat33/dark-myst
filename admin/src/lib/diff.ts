@@ -5,9 +5,7 @@ import type { CharacterData, FieldChange } from '../types'
  * independently unit-tested function — this is what the "pending changes" panel shows before a
  * publish even reaches the server, and it is exercised directly by tests/diff.spec.ts. */
 export function diffCharacter(before: CharacterData, after: CharacterData): FieldChange[] {
-  const changes: FieldChange[] = []
-  walk('', before as unknown as Json, after as unknown as Json, changes)
-  return changes
+  return diffItem(before, after)
 }
 
 export interface CharacterListDiff {
@@ -17,17 +15,43 @@ export interface CharacterListDiff {
 }
 
 export function diffCharacterList(before: CharacterData[], after: CharacterData[]): CharacterListDiff {
-  const beforeById = new Map(before.map((c) => [c.id, c]))
-  const afterById = new Map(after.map((c) => [c.id, c]))
+  const generic = diffList(before, after)
+  return {
+    added: generic.added,
+    removed: generic.removed,
+    changed: generic.changed.map((c) => ({ characterId: c.id, fields: c.fields }))
+  }
+}
+
+/** Every scalar leaf of two same-shaped objects, dotted-path style — the type-agnostic version of
+ * {@link diffCharacter}, shared by every editor tab's "pending changes" panel (Skills, Enemies,
+ * Encounters), not just characters. */
+export function diffItem<T>(before: T, after: T): FieldChange[] {
+  const changes: FieldChange[] = []
+  walk('', before as unknown as Json, after as unknown as Json, changes)
+  return changes
+}
+
+export interface IdListDiff {
+  added: string[]
+  removed: string[]
+  changed: { id: string; fields: FieldChange[] }[]
+}
+
+/** {@link diffCharacterList} generalized to any list of objects with an `id` field — used by
+ * SkillsWorkspace/EnemiesWorkspace/EncountersWorkspace's pending-changes panels. */
+export function diffList<T extends { id: string }>(before: T[], after: T[]): IdListDiff {
+  const beforeById = new Map(before.map((item) => [item.id, item]))
+  const afterById = new Map(after.map((item) => [item.id, item]))
 
   const added = [...afterById.keys()].filter((id) => !beforeById.has(id)).sort()
   const removed = [...beforeById.keys()].filter((id) => !afterById.has(id)).sort()
 
-  const changed: { characterId: string; fields: FieldChange[] }[] = []
+  const changed: { id: string; fields: FieldChange[] }[] = []
   for (const id of [...beforeById.keys()].filter((k) => afterById.has(k)).sort()) {
-    const fields = diffCharacter(beforeById.get(id)!, afterById.get(id)!)
+    const fields = diffItem(beforeById.get(id)!, afterById.get(id)!)
     if (fields.length > 0) {
-      changed.push({ characterId: id, fields })
+      changed.push({ id, fields })
     }
   }
 

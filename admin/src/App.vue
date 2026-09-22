@@ -2,8 +2,24 @@
 import { ref, onMounted } from 'vue'
 import LoginPanel from './components/LoginPanel.vue'
 import CharactersWorkspace from './components/CharactersWorkspace.vue'
+import SkillsWorkspace from './components/SkillsWorkspace.vue'
+import EnemiesWorkspace from './components/EnemiesWorkspace.vue'
+import EncountersWorkspace from './components/EncountersWorkspace.vue'
+import SweepPanel from './components/SweepPanel.vue'
 
 const STORAGE_KEY = 'darkmyst-admin-token'
+
+type Tab = 'characters' | 'skills' | 'enemies' | 'encounters' | 'sweep'
+
+const tabs: { id: Tab; label: string }[] = [
+  { id: 'characters', label: 'Characters' },
+  { id: 'skills', label: 'Skills' },
+  { id: 'enemies', label: 'Enemies' },
+  { id: 'encounters', label: 'Encounters' },
+  { id: 'sweep', label: 'Sweep' }
+]
+
+const activeTab = ref<Tab>('characters')
 
 const adminToken = ref<string | null>(null)
 
@@ -42,7 +58,26 @@ function onLogout() {
     </header>
     <main>
       <LoginPanel v-if="!adminToken" @logged-in="onLoggedIn" />
-      <CharactersWorkspace v-else :admin-token="adminToken" @unauthorized="onLogout" />
+      <template v-else>
+        <nav class="tab-bar">
+          <button
+            v-for="tab in tabs"
+            :key="tab.id"
+            class="tab-button"
+            :class="{ active: activeTab === tab.id }"
+            :data-testid="`tab-${tab.id}`"
+            @click="activeTab = tab.id"
+          >
+            {{ tab.label }}
+          </button>
+        </nav>
+
+        <CharactersWorkspace v-if="activeTab === 'characters'" :admin-token="adminToken" @unauthorized="onLogout" />
+        <SkillsWorkspace v-else-if="activeTab === 'skills'" :admin-token="adminToken" @unauthorized="onLogout" />
+        <EnemiesWorkspace v-else-if="activeTab === 'enemies'" :admin-token="adminToken" @unauthorized="onLogout" />
+        <EncountersWorkspace v-else-if="activeTab === 'encounters'" :admin-token="adminToken" @unauthorized="onLogout" />
+        <SweepPanel v-else-if="activeTab === 'sweep'" :admin-token="adminToken" @unauthorized="onLogout" />
+      </template>
     </main>
   </div>
 </template>
@@ -132,6 +167,18 @@ button.danger {
   border: none;
   color: var(--muted);
   text-decoration: underline;
+}
+
+.tab-bar {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.tab-button.active {
+  border-color: var(--accent);
+  background: #1c2740;
 }
 
 input,

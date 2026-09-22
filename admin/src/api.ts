@@ -6,7 +6,11 @@ import type {
   AdminVersionEntry,
   ApiProblem,
   CharacterData,
-  ContentDiff
+  ContentDiff,
+  EncounterData,
+  EnemyData,
+  SkillDefinition,
+  SweepResult
 } from './types'
 
 // Overridable at build/dev time (`VITE_API_BASE_URL`) so the same build can be pointed at a local
@@ -81,6 +85,69 @@ export function publishCharacters(
   idempotencyKey: string
 ): Promise<AdminPublishResult> {
   return request('/admin/content/publish', { method: 'POST', token, idempotencyKey, body: { characters, notes } })
+}
+
+// Skills, enemies and encounters each round-trip their own whole list, exactly the way characters
+// always has (docs/11-admin-spec.md): a request never mixes two edited types, so each of these
+// only ever sets the one field the server needs and leaves the rest of the body absent — the
+// server reads every other content file straight off disk (AdminContentService.BuildStagedPack).
+
+export function validateSkills(token: string, skills: SkillDefinition[]): Promise<AdminValidateResult> {
+  return request('/admin/content/validate', { method: 'POST', token, body: { skills, notes: null } })
+}
+
+export function publishSkills(
+  token: string,
+  skills: SkillDefinition[],
+  notes: string,
+  idempotencyKey: string
+): Promise<AdminPublishResult> {
+  return request('/admin/content/publish', { method: 'POST', token, idempotencyKey, body: { skills, notes } })
+}
+
+export function validateEnemies(token: string, enemies: EnemyData[]): Promise<AdminValidateResult> {
+  return request('/admin/content/validate', { method: 'POST', token, body: { enemies, notes: null } })
+}
+
+export function publishEnemies(
+  token: string,
+  enemies: EnemyData[],
+  notes: string,
+  idempotencyKey: string
+): Promise<AdminPublishResult> {
+  return request('/admin/content/publish', { method: 'POST', token, idempotencyKey, body: { enemies, notes } })
+}
+
+export function validateEncounters(token: string, encounters: EncounterData[]): Promise<AdminValidateResult> {
+  return request('/admin/content/validate', { method: 'POST', token, body: { encounters, notes: null } })
+}
+
+export function publishEncounters(
+  token: string,
+  encounters: EncounterData[],
+  notes: string,
+  idempotencyKey: string
+): Promise<AdminPublishResult> {
+  return request('/admin/content/publish', { method: 'POST', token, idempotencyKey, body: { encounters, notes } })
+}
+
+/** docs/11-admin-spec.md's sweep button. No Idempotency-Key: the server endpoint is read-only,
+ * same reasoning as validate. The server bounds `repeat` itself (sweep_repeat_too_large) and
+ * refuses a second concurrent sweep (sweep_in_progress) — see ApiError.problem.error to tell them
+ * apart in the UI. */
+export function runSweep(
+  token: string,
+  encounterId: string,
+  roster: string[],
+  level: number,
+  seed: number,
+  repeat: number
+): Promise<SweepResult> {
+  return request('/admin/content/sweep', {
+    method: 'POST',
+    token,
+    body: { encounterId, roster, level, seed, repeat }
+  })
 }
 
 export function rollbackTo(
