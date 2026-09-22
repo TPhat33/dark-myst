@@ -39,7 +39,7 @@
       "leaderSlot": 0,
       "units": [
         { "enemyId": "enm_ashen_revenant", "slot": 0 },
-        { "enemyId": "enm_drowned_warden", "slot": 2, "statScalePerMille": 1400 },
+        { "enemyId": "enm_drowned_warden", "slot": 2, "statScalePerMille": 600 },
         { "enemyId": "enm_crypt_acolyte", "slot": 3, "statScalePerMille": 1400 },
         { "enemyId": "enm_crypt_acolyte", "slot": 4, "statScalePerMille": 1400 }
       ]
