@@ -59,9 +59,10 @@ docs/                     เอกสารชุดนี้
 
 `server/DarkMyst.Api/` และ `admin/` มีแล้วตั้งแต่ระยะ D นี้ (ดู
 [10-backend-spec.md](10-backend-spec.md), [11-admin-spec.md](11-admin-spec.md)) — งานที่เหลือ
-ของระยะ D คือ real auth เท่านั้น (ดู [06-roadmap.md](06-roadmap.md)) `server/DarkMyst.Api/`
-อ้างอิง `src/DarkMyst.Combat`, `src/DarkMyst.Content` และ `src/DarkMyst.Expedition` ชุดเดิม
-ทั้งหมด ไม่เขียนกฎขึ้นใหม่ฝั่งเซิร์ฟเวอร์เลย `admin/` แก้ `content/` ผ่าน `server/DarkMyst.Api/`
+ของระยะ D คือ real auth, ด่านสำรวจ/ตารางรางวัล/เหตุการณ์ในหน้าจัดการ และ diff แบบภาพ (ดู
+[06-roadmap.md](06-roadmap.md)) `server/DarkMyst.Api/` อ้างอิง `src/DarkMyst.Combat`,
+`src/DarkMyst.Content`, `src/DarkMyst.Expedition` และ `src/DarkMyst.Sim` ชุดเดิมทั้งหมด
+ไม่เขียนกฎขึ้นใหม่ฝั่งเซิร์ฟเวอร์เลย `admin/` แก้ `content/` ผ่าน `server/DarkMyst.Api/`
 เท่านั้น ไม่มีทางเข้าถึงข้อมูลเกมทางอื่น
 
 ## ทำไม Unity ถึงใช้ DLL ไม่ใช่ source
