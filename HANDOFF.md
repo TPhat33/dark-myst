@@ -5,7 +5,7 @@ explains is deliberately left out here; this file is only what dies with a sessi
 
 ## Where the work is
 
-Branch `claude/2d-rpg-team-battle-farm-0dqcx2` at `37721ce`, pushed, working tree clean.
+Branch `claude/2d-rpg-team-battle-farm-continue-sgj839` (continues `-0dqcx2`), pushed, working tree clean.
 No pull request has been opened and none should be without the user asking.
 
 ## Verified just now
@@ -109,7 +109,7 @@ batching** — two agents have already been cut off mid-stream by Sonnet rate li
 - Publishing content is refused when `ContentPack.Validate()` fails. No override flag.
 - Any content edit bumps `contentVersion` (`docs/01` rule 5).
 - No secrets or credentials in committed source.
-- Push only to `claude/2d-rpg-team-battle-farm-0dqcx2`.
+- Push only to the branch the session is assigned (currently `claude/2d-rpg-team-battle-farm-continue-sgj839`).
 
 ## Environment facts that cost effort to establish
 
