@@ -35,7 +35,11 @@ namespace DarkMyst.Api.Telemetry
             }
             catch (ContentVersionUnavailableException)
             {
-                pack = registry.Latest;
+                // Deliberately no fallback to Latest here: that would stamp an event written under
+                // one content version with a line looked up from a different one, silently — the
+                // same "never mix versions" rule docs/10-backend-spec.md's admin read side holds
+                // itself to. A null line is the honest answer, same as an unknown character id below.
+                return new LineInfo(null, 0, 0);
             }
 
             try

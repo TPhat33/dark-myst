@@ -201,7 +201,12 @@ namespace DarkMyst.Api.Evolve
             int sameLineMaterialCount = fodderEntities.Count(f =>
                 TelemetryContentResolver.Resolve(_content, f.ContentVersion, f.CharacterId).LineId == fromCharacter.LineId);
 
-            _telemetry.Add(accountId, TelemetryEventTypes.EvolveCompleted, subject.ContentVersion, pack.Manifest.RulesVersion,
+            // pack.Version, not subject.ContentVersion: every other event in this catalogue stamps
+            // the ContentPack it actually resolved things against (docs/10-backend-spec.md), and
+            // pack is that same pack here — subject.ContentVersion happens to equal it today (an
+            // evolve's NextStageId always resolves within the pack it started under), but stamping
+            // the pack directly keeps this event consistent by construction, not by coincidence.
+            _telemetry.Add(accountId, TelemetryEventTypes.EvolveCompleted, pack.Version, pack.Manifest.RulesVersion,
                 new EvolveCompletedPayload(
                     subject.InstanceId, fromCharacterId, subject.CharacterId, fromCharacter.LineId,
                     fromCharacter.EvolveStage, toCharacter.EvolveStage, subject.InheritedBonusPerMille,

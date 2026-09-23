@@ -16,8 +16,10 @@ namespace DarkMyst.Api.Telemetry
     /// level is reported alongside the win rate specifically so a reader can see whether a
     /// difference is the line itself or just the teams that happen to carry it being higher-level
     /// (docs/10-backend-spec.md's telemetry section, docs/12-summon-spec.md's popularity x strength
-    /// framework).</summary>
-    public sealed record TelemetryWinRateGroup(int N, double? WinRate, double? MeanTeamLevel);
+    /// framework). <c>Accounts</c> is the distinct-account count behind <c>N</c> battles — a few
+    /// heavy players replaying the same fight can otherwise make a battle count look far more
+    /// trustworthy than it is.</summary>
+    public sealed record TelemetryWinRateGroup(int N, int Accounts, double? WinRate, double? MeanTeamLevel);
 
     public sealed record TelemetryWinRateComparison(string EncounterId, TelemetryWinRateGroup With, TelemetryWinRateGroup Without, bool LowSample);
 

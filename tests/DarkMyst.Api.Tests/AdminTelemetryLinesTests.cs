@@ -22,7 +22,14 @@ namespace DarkMyst.Api.Tests
         private const string AshenKnightI = "chr_ashen_knight_i"; // line_ashen_knight
         private const string GraveWardenI = "chr_grave_warden_i"; // line_grave_warden
         private const string TutorialHounds = "enc_tutorial_hounds";
-        private const string Boss = "enc_boss_ashen_revenant";
+
+        // Deterministic seed: choiceIndex 0 and 1 are both Battle nodes against
+        // enc_tutorial_hounds at this seed (map generation only depends on the seed, not on the
+        // character placed) — verified against the running server before being hardcoded here.
+        private const ulong BattleSeed = 24;
+        private const int WinChoiceIndex = 0; // level 20 always wins here
+        private const int LossChoiceIndexForLevel1 = 1; // level 1 always loses here
+
         private const double Epsilon = 1e-9;
 
         private readonly ApiTestFixture _fixture;
@@ -33,27 +40,18 @@ namespace DarkMyst.Api.Tests
         }
 
         [Fact]
-        public async Task Pick_rate_and_with_vs_without_win_rate_are_computed_exactly()
+        public async Task Pick_rate_and_with_vs_without_win_rate_are_computed_exactly_from_expedition_battles_only()
         {
             var client = _fixture.Client;
 
-            // With-line battles: enc_tutorial_hounds x2 wins (level 20 always wins it), plus
-            // enc_boss_ashen_revenant x1 loss (level 1 always loses it) — both deterministic,
-            // checked directly against the running server before being fixed here.
-            await RunBattleAsync(client, AshenKnightI, level: 20, TutorialHounds);
-            await RunBattleAsync(client, AshenKnightI, level: 20, TutorialHounds);
-            await RunBattleAsync(client, AshenKnightI, level: 1, Boss);
+            // With-line: 2 expedition battles, both wins (level 20, WinChoiceIndex).
+            await ExpeditionBattleAsync(client, AshenKnightI, level: 20, WinChoiceIndex);
+            await ExpeditionBattleAsync(client, AshenKnightI, level: 20, WinChoiceIndex);
 
-            // Without-line battles, same encounters, a different line: enc_tutorial_hounds x1 win
-            // (level 20) + x2 losses (level 1) — nothing against the boss.
-            await RunBattleAsync(client, GraveWardenI, level: 20, TutorialHounds);
-            await RunBattleAsync(client, GraveWardenI, level: 1, TutorialHounds);
-            await RunBattleAsync(client, GraveWardenI, level: 1, TutorialHounds);
-
-            // Pick rate: 2 of 3 expedition starts on stg_ashfields carry line_ashen_knight.
-            await StartExpeditionAsync(client, AshenKnightI, seed: 9001);
-            await StartExpeditionAsync(client, AshenKnightI, seed: 9002);
-            await StartExpeditionAsync(client, GraveWardenI, seed: 9003);
+            // Without-line: 3 expedition battles, 1 win (level 20) + 2 losses (level 1).
+            await ExpeditionBattleAsync(client, GraveWardenI, level: 20, WinChoiceIndex);
+            await ExpeditionBattleAsync(client, GraveWardenI, level: 1, LossChoiceIndexForLevel1);
+            await ExpeditionBattleAsync(client, GraveWardenI, level: 1, LossChoiceIndexForLevel1);
 
             (_, string adminToken) = await client.CreateAdminAsync("lines-arithmetic-admin");
             var response = await client.AdminGet("/admin/telemetry/lines", adminToken);
@@ -62,38 +60,58 @@ namespace DarkMyst.Api.Tests
 
             TelemetryLineReport ashenKnight = body.Lines.Single(l => l.LineId == "line_ashen_knight");
 
+            // Each expedition battle above is itself one expedition start on stg_ashfields, so pick
+            // rate is 2 (ashen_knight) of 5 (2 + 3) total starts.
             TelemetryStagePickRate pickRate = ashenKnight.PickRatesByStage.Single(p => p.StageId == "stg_ashfields");
-            Assert.Equal(3, pickRate.TotalStarts);
+            Assert.Equal(5, pickRate.TotalStarts);
             Assert.Equal(2, pickRate.StartsWithLine);
-            Assert.Equal(2.0 / 3.0, pickRate.PickRate, Epsilon);
+            Assert.Equal(2.0 / 5.0, pickRate.PickRate, Epsilon);
 
             TelemetryWinRateComparison houndsRate = ashenKnight.WinRatesByEncounter.Single(w => w.EncounterId == TutorialHounds);
             Assert.Equal(2, houndsRate.With.N);
+            Assert.Equal(2, houndsRate.With.Accounts);
             Assert.Equal(1.0, houndsRate.With.WinRate.Value, Epsilon);
             Assert.Equal(20.0, houndsRate.With.MeanTeamLevel.Value, Epsilon);
             Assert.Equal(3, houndsRate.Without.N);
+            Assert.Equal(3, houndsRate.Without.Accounts);
             Assert.Equal(1.0 / 3.0, houndsRate.Without.WinRate.Value, Epsilon);
             Assert.Equal((20.0 + 1.0 + 1.0) / 3.0, houndsRate.Without.MeanTeamLevel.Value, Epsilon);
+            // Low sample two ways here: n < 30 on both sides, and also < 5 distinct accounts.
             Assert.True(houndsRate.LowSample);
 
-            TelemetryWinRateComparison bossRate = ashenKnight.WinRatesByEncounter.Single(w => w.EncounterId == Boss);
-            Assert.Equal(1, bossRate.With.N);
-            Assert.Equal(0.0, bossRate.With.WinRate.Value, Epsilon);
-            Assert.Equal(1.0, bossRate.With.MeanTeamLevel.Value, Epsilon);
-            Assert.Equal(0, bossRate.Without.N);
-            Assert.Null(bossRate.Without.WinRate);
-            Assert.Null(bossRate.Without.MeanTeamLevel);
-
-            Assert.Equal(3, ashenKnight.WinRateOverall.With.N);
-            Assert.Equal(2.0 / 3.0, ashenKnight.WinRateOverall.With.WinRate.Value, Epsilon);
-            Assert.Equal((20.0 + 20.0 + 1.0) / 3.0, ashenKnight.WinRateOverall.With.MeanTeamLevel.Value, Epsilon);
+            Assert.Equal(2, ashenKnight.WinRateOverall.With.N);
+            Assert.Equal(1.0, ashenKnight.WinRateOverall.With.WinRate.Value, Epsilon);
             Assert.Equal(3, ashenKnight.WinRateOverall.Without.N);
             Assert.Equal(1.0 / 3.0, ashenKnight.WinRateOverall.Without.WinRate.Value, Epsilon);
-            Assert.Equal((20.0 + 1.0 + 1.0) / 3.0, ashenKnight.WinRateOverall.Without.MeanTeamLevel.Value, Epsilon);
 
-            // Every grant above (3 for the battles, 2 for the starts) was its own fresh account.
-            Assert.Equal(5, ashenKnight.ObtainedCount);
-            Assert.Equal(5, ashenKnight.DistinctOwnerCount);
+            // Every grant above (2 for the with-line battles, 3 for the without-line battles) was
+            // its own fresh account.
+            Assert.Equal(2, ashenKnight.ObtainedCount);
+            Assert.Equal(2, ashenKnight.DistinctOwnerCount);
+        }
+
+        /// <summary>Builds one account, grants it a fresh character, starts an expedition on
+        /// <c>stg_ashfields</c> with <see cref="BattleSeed"/> and resolves the Battle node at
+        /// <paramref name="choiceIndex"/> — the only way this test suite produces a
+        /// <c>battle_finished</c> event with <c>context: "expedition"</c>.</summary>
+        internal static async Task ExpeditionBattleAsync(
+            System.Net.Http.HttpClient client, string characterId, int level, int choiceIndex)
+        {
+            (_, string token) = await client.CreateGuestAsync();
+            OwnedCharacter character = await Seed.GrantCharacterAsync(client, token, characterId, level);
+            var start = await client.ApiPost("/expeditions/start", token, "start-" + character.InstanceId, new
+            {
+                stageId = "stg_ashfields",
+                leaderSlot = 0,
+                placements = new[] { new { slot = 0, instanceId = character.InstanceId } },
+                seed = BattleSeed
+            });
+            start.EnsureSuccessStatusCode();
+            var runId = (await start.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>(Json.Options)).GetProperty("runId").GetString();
+
+            var choose = await client.ApiPost(
+                "/expeditions/" + runId + "/choose", token, "choose-" + runId, new { choiceIndex });
+            choose.EnsureSuccessStatusCode();
         }
 
         private static async Task RunBattleAsync(System.Net.Http.HttpClient client, string characterId, int level, string encounterId)
@@ -126,6 +144,138 @@ namespace DarkMyst.Api.Tests
                 seed
             });
             response.EnsureSuccessStatusCode();
+        }
+    }
+
+    /// <summary>Proves item 1 of the review: <c>/battle/run</c> (context <c>battle_run</c>) must
+    /// never move a line's win rate, however many times it is replayed — that sandbox is free,
+    /// unlimited retries with no reward, so one player spamming it could otherwise dominate the
+    /// "with vs without" comparison. Own database, same reasoning as every other class here.</summary>
+    public sealed class AdminTelemetryLinesBattleRunExclusionTests : IClassFixture<ApiTestFixture>
+    {
+        private const string AshenKnightI = "chr_ashen_knight_i";
+        private const string TutorialHounds = "enc_tutorial_hounds";
+        private const double Epsilon = 1e-9;
+
+        private readonly ApiTestFixture _fixture;
+
+        public AdminTelemetryLinesBattleRunExclusionTests(ApiTestFixture fixture)
+        {
+            _fixture = fixture;
+        }
+
+        [Fact]
+        public async Task Flooding_battle_run_wins_does_not_move_the_expedition_win_rate()
+        {
+            var client = _fixture.Client;
+
+            // Baseline, from real expedition battles: 1 win + 1 loss -> win rate exactly 0.5.
+            await AdminTelemetryLinesTests.ExpeditionBattleAsync(client, AshenKnightI, level: 20, choiceIndex: 0);
+            await AdminTelemetryLinesTests.ExpeditionBattleAsync(client, AshenKnightI, level: 1, choiceIndex: 1);
+
+            // Flood: 20 training-ground wins for the same line against the same encounter.
+            for (int i = 0; i < 20; i++)
+            {
+                (_, string token) = await client.CreateGuestAsync();
+                OwnedCharacter character = await Seed.GrantCharacterAsync(client, token, AshenKnightI, level: 20);
+                var response = await client.ApiPost("/battle/run", token, body: new
+                {
+                    encounterId = TutorialHounds,
+                    leaderSlot = 0,
+                    placements = new[] { new { slot = 0, instanceId = character.InstanceId } }
+                });
+                response.EnsureSuccessStatusCode();
+            }
+
+            (_, string adminToken) = await client.CreateAdminAsync("battle-run-flood-admin");
+            var linesResponse = await client.AdminGet("/admin/telemetry/lines", adminToken);
+            linesResponse.EnsureSuccessStatusCode();
+            TelemetryLinesResponse body = await linesResponse.Content.ReadFromJsonAsync<TelemetryLinesResponse>(Json.Options);
+            TelemetryLineReport ashenKnight = body.Lines.Single(l => l.LineId == "line_ashen_knight");
+
+            TelemetryWinRateComparison houndsRate = ashenKnight.WinRatesByEncounter.Single(w => w.EncounterId == TutorialHounds);
+            Assert.Equal(2, houndsRate.With.N); // still just the 2 expedition battles
+            Assert.Equal(0.5, houndsRate.With.WinRate.Value, Epsilon);
+            Assert.Equal(2, ashenKnight.WinRateOverall.With.N);
+            Assert.Equal(0.5, ashenKnight.WinRateOverall.With.WinRate.Value, Epsilon);
+
+            // The flood is still raw data: it counts for "obtained but never used" purposes (every
+            // flooded character was placed in a battle_run fight, so none of the 22 grants here
+            // ends up in ObtainedNeverUsedCount).
+            Assert.Equal(0, ashenKnight.ObtainedNeverUsedCount);
+        }
+    }
+
+    /// <summary>Proves item 2 of the review: a win-rate group with <c>n &gt;= 30</c> battles but
+    /// fewer than 5 distinct accounts behind them is still <c>lowSample</c> — a handful of heavy
+    /// players cannot make a comparison look trustworthy by replaying the same fight. Own database,
+    /// same reasoning as every other class here.</summary>
+    public sealed class AdminTelemetryLinesSampleSizeTests : IClassFixture<ApiTestFixture>
+    {
+        private const string AshenKnightI = "chr_ashen_knight_i";
+        private const string GraveWardenI = "chr_grave_warden_i";
+        private const string TutorialHounds = "enc_tutorial_hounds";
+
+        private readonly ApiTestFixture _fixture;
+
+        public AdminTelemetryLinesSampleSizeTests(ApiTestFixture fixture)
+        {
+            _fixture = fixture;
+        }
+
+        [Fact]
+        public async Task Thirty_plus_battles_from_under_five_accounts_is_still_low_sample()
+        {
+            var client = _fixture.Client;
+
+            // 3 accounts, 10 expedition battles each, all wins -> n = 30, accounts = 3 (< 5).
+            await RunManyAsync(client, AshenKnightI, accounts: 3, battlesPerAccount: 10);
+            // Same shape for the "without" side, so neither side's n < 30 trips the old rule and
+            // only the new distinct-account rule is left to explain the low-sample flag.
+            await RunManyAsync(client, GraveWardenI, accounts: 3, battlesPerAccount: 10);
+
+            (_, string adminToken) = await client.CreateAdminAsync("sample-size-admin");
+            var response = await client.AdminGet("/admin/telemetry/lines", adminToken);
+            response.EnsureSuccessStatusCode();
+            TelemetryLinesResponse body = await response.Content.ReadFromJsonAsync<TelemetryLinesResponse>(Json.Options);
+            TelemetryLineReport ashenKnight = body.Lines.Single(l => l.LineId == "line_ashen_knight");
+
+            TelemetryWinRateComparison houndsRate = ashenKnight.WinRatesByEncounter.Single(w => w.EncounterId == TutorialHounds);
+            Assert.Equal(30, houndsRate.With.N);
+            Assert.Equal(3, houndsRate.With.Accounts);
+            Assert.Equal(30, houndsRate.Without.N);
+            Assert.Equal(3, houndsRate.Without.Accounts);
+            Assert.True(houndsRate.LowSample); // neither n is < 30, only accounts < 5 explains this
+        }
+
+        /// <summary>Runs <paramref name="battlesPerAccount"/> expedition-context wins per account,
+        /// across <paramref name="accounts"/> accounts, reusing each account for a fresh character
+        /// and a fresh run every time (a character already placed in an active run cannot be reused
+        /// until that run ends, so each battle needs its own grant).</summary>
+        private static async Task RunManyAsync(
+            System.Net.Http.HttpClient client, string characterId, int accounts, int battlesPerAccount)
+        {
+            for (int a = 0; a < accounts; a++)
+            {
+                (_, string token) = await client.CreateGuestAsync();
+                for (int b = 0; b < battlesPerAccount; b++)
+                {
+                    OwnedCharacter character = await Seed.GrantCharacterAsync(client, token, characterId, level: 20);
+                    var start = await client.ApiPost("/expeditions/start", token, "start-" + character.InstanceId, new
+                    {
+                        stageId = "stg_ashfields",
+                        leaderSlot = 0,
+                        placements = new[] { new { slot = 0, instanceId = character.InstanceId } },
+                        seed = 24UL
+                    });
+                    start.EnsureSuccessStatusCode();
+                    var runId = (await start.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>(Json.Options)).GetProperty("runId").GetString();
+
+                    var choose = await client.ApiPost(
+                        "/expeditions/" + runId + "/choose", token, "choose-" + runId, new { choiceIndex = 0 });
+                    choose.EnsureSuccessStatusCode();
+                }
+            }
         }
     }
 

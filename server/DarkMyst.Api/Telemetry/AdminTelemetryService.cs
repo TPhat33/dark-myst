@@ -23,7 +23,8 @@ namespace DarkMyst.Api.Telemetry
     {
         private const int DefaultEventsLimit = 500;
         private const int MaxEventsLimit = 5000;
-        private const int LowSampleThreshold = 30;
+        private const int LowSampleBattleThreshold = 30;
+        private const int LowSampleAccountThreshold = 5;
 
         private static readonly string[] LineReportEventTypes =
         {
@@ -103,7 +104,7 @@ namespace DarkMyst.Api.Telemetry
 
             var obtained = new List<(string InstanceId, string LineId, string AccountId, DateTimeOffset ObtainedAt)>();
             var starts = new List<(string StageId, HashSet<string> LineIds)>();
-            var battles = new List<(string EncounterId, bool Win, double MeanLevel, HashSet<string> LineIds)>();
+            var battles = new List<(string EncounterId, string Context, string AccountId, bool Win, double MeanLevel, HashSet<string> LineIds)>();
             var evolves = new List<(string AccountId, DateTimeOffset OccurredAt, string LineId)>();
 
             // instanceId -> earliest time it showed up in an expedition_started or battle_finished
@@ -152,7 +153,10 @@ namespace DarkMyst.Api.Telemetry
                         var lineIds = new HashSet<string>(
                             payload.Members.Where(m => m.LineId != null).Select(m => m.LineId), StringComparer.Ordinal);
                         double meanLevel = payload.Members.Average(m => (double)m.Level);
-                        battles.Add((payload.EncounterId, payload.Outcome == "win", meanLevel, lineIds));
+                        battles.Add((payload.EncounterId, payload.Context, e.AccountId, payload.Outcome == "win", meanLevel, lineIds));
+                        // Every server-resolved battle counts for first-use/never-used — a
+                        // training-ground fight still proves the character was actually played, even
+                        // though it never counts toward a win-rate comparison (see below).
                         MarkFirstUse(firstUseByInstance, payload.Members, e.OccurredAt);
                         break;
                     }
@@ -179,6 +183,14 @@ namespace DarkMyst.Api.Telemetry
 
             var startsByStage = starts.GroupBy(s => s.StageId, StringComparer.Ordinal)
                 .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
+
+            // Win rate is a balance signal, tuned against the difficulty curve — it must never
+            // include /battle/run (context "battle_run"): that sandbox is free, unlimited retries
+            // with no reward, so one player spamming it with one team could otherwise dominate the
+            // "with vs without" comparison. Only server-resolved expedition node battles count here.
+            // battle_run rows are still written and still counted above for first-use/never-used —
+            // playing a character in the sandbox is still evidence it was not left unused.
+            var expeditionBattles = battles.Where(b => b.Context == "expedition").ToList();
 
             var lines = pack.Characters
                 .Where(c => c.EvolveStage == 1 && !string.IsNullOrEmpty(c.LineId))
@@ -207,12 +219,12 @@ namespace DarkMyst.Api.Telemetry
 
                 pickRates = pickRates.OrderBy(p => p.StageId, StringComparer.Ordinal).ToList();
 
-                var winRatesByEncounter = battles.GroupBy(b => b.EncounterId, StringComparer.Ordinal)
+                var winRatesByEncounter = expeditionBattles.GroupBy(b => b.EncounterId, StringComparer.Ordinal)
                     .OrderBy(g => g.Key, StringComparer.Ordinal)
                     .Select(g => BuildWinRateComparison(g.Key, g.ToList(), lineId))
                     .ToList();
 
-                TelemetryWinRateComparison overall = BuildWinRateComparison(null, battles, lineId);
+                TelemetryWinRateComparison overall = BuildWinRateComparison(null, expeditionBattles, lineId);
 
                 int evolveCompletedCount = evolves.Count(x => x.LineId == lineId);
                 int firstEvolveCount = firstEvolveLineByAccount.Count(x => x == lineId);
@@ -266,28 +278,36 @@ namespace DarkMyst.Api.Telemetry
         }
 
         private static TelemetryWinRateComparison BuildWinRateComparison(
-            string encounterId, List<(string EncounterId, bool Win, double MeanLevel, HashSet<string> LineIds)> battles, string lineId)
+            string encounterId,
+            List<(string EncounterId, string Context, string AccountId, bool Win, double MeanLevel, HashSet<string> LineIds)> battles,
+            string lineId)
         {
             var with = battles.Where(b => b.LineIds.Contains(lineId)).ToList();
             var without = battles.Where(b => !b.LineIds.Contains(lineId)).ToList();
 
             TelemetryWinRateGroup withGroup = ToGroup(with);
             TelemetryWinRateGroup withoutGroup = ToGroup(without);
-            bool lowSample = with.Count < LowSampleThreshold || without.Count < LowSampleThreshold;
+            // Low-sample on either the battle count or the distinct-account count: a handful of
+            // heavy players replaying the same fight can push N past 30 while the result still
+            // reflects almost no one.
+            bool lowSample = with.Count < LowSampleBattleThreshold || without.Count < LowSampleBattleThreshold
+                || withGroup.Accounts < LowSampleAccountThreshold || withoutGroup.Accounts < LowSampleAccountThreshold;
 
             return new TelemetryWinRateComparison(encounterId, withGroup, withoutGroup, lowSample);
         }
 
-        private static TelemetryWinRateGroup ToGroup(List<(string EncounterId, bool Win, double MeanLevel, HashSet<string> LineIds)> group)
+        private static TelemetryWinRateGroup ToGroup(
+            List<(string EncounterId, string Context, string AccountId, bool Win, double MeanLevel, HashSet<string> LineIds)> group)
         {
             if (group.Count == 0)
             {
-                return new TelemetryWinRateGroup(0, null, null);
+                return new TelemetryWinRateGroup(0, 0, null, null);
             }
 
             double winRate = group.Count(b => b.Win) / (double)group.Count;
             double meanLevel = group.Average(b => b.MeanLevel);
-            return new TelemetryWinRateGroup(group.Count, winRate, meanLevel);
+            int accounts = group.Select(b => b.AccountId).Distinct(StringComparer.Ordinal).Count();
+            return new TelemetryWinRateGroup(group.Count, accounts, winRate, meanLevel);
         }
 
         private static double? Median(List<double> values)
