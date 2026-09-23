@@ -28,6 +28,7 @@ server/DarkMyst.Api/
   Debug/                       endpoint แจกของสำหรับทดสอบ/สาธิต (ดูหัวข้อ "สิ่งที่ตั้งใจตัดออก")
   Auth/                        bearer-token stub (player) + gate ของ admin (AdminAuth.cs)
   Admin/                       หน้าจัดการเนื้อหา — ดู 11-admin-spec.md
+  Telemetry/                   telemetry ระดับตัวละคร (เขียนที่ทุก endpoint ข้างบน, อ่านผ่าน admin)
 ```
 
 หนึ่งโปรเจกต์ แบ่งโมดูลภายในตามโฟลเดอร์ฟีเจอร์ ไม่ใช่ microservices — ตาม
@@ -54,10 +55,11 @@ server/DarkMyst.Api/
 | `GET /debug/character/{instanceId}` | ต้อง | - | อ่านสถานะตัวละครหนึ่งตัว — เฉพาะ `Development`/`Debug:AllowGrants` เช่นกัน |
 | `GET /health` | ไม่ต้อง | - | liveness + เช็คว่าต่อฐานข้อมูลได้ |
 
-ตารางนี้ไม่รวม endpoint ของหน้าจัดการ (`POST /admin/bootstrap`, `/admin/content/*`) —
-endpoint กลุ่มนั้นผ่าน gate การยืนยันตัวตนคนละแบบโดยสิ้นเชิง (`X-Admin-Token`, ไม่ใช่
-`Authorization: Bearer` ที่ตารางนี้พูดถึง) รายละเอียดเต็มอยู่ที่
-[11-admin-spec.md](11-admin-spec.md)
+ตารางนี้ไม่รวม endpoint ของหน้าจัดการ (`POST /admin/bootstrap`, `/admin/content/*`,
+`/admin/telemetry/*`) — endpoint กลุ่มนั้นผ่าน gate การยืนยันตัวตนคนละแบบโดยสิ้นเชิง
+(`X-Admin-Token`, ไม่ใช่ `Authorization: Bearer` ที่ตารางนี้พูดถึง) รายละเอียดเต็มของ
+`/admin/content/*` อยู่ที่ [11-admin-spec.md](11-admin-spec.md); ของ `/admin/telemetry/*`
+อยู่ในหัวข้อ "Telemetry ระดับตัวละคร" ด้านล่าง
 
 ## สัญญา idempotency (idempotency contract)
 
@@ -154,6 +156,75 @@ header `Idempotency-Key` เป็นสตริงที่ไคลเอน�
 เซิร์ฟเวอร์คำนวณได้ แถวหนึ่งถูกบันทึกลง `battle_checksum_mismatches` (คำขอทั้งก้อนถูกเก็บไว้
 เพื่อสืบสวนย้อนหลังได้จริง ไม่ใช่แค่นับจำนวน) ตาม docs/07-testing-plan.md
 
+## Telemetry ระดับตัวละคร
+
+ต่อยอดจากหลักการใน [08-metrics.md](08-metrics.md) และ [12-summon-spec.md](12-summon-spec.md)
+หัวข้อ "Telemetry ระดับตัวละคร" — เป้าหมายคือหาตัวละครที่แรงเกิน/อ่อนเกินไว้ปรับสมดุลทีหลัง
+(กรอบความนิยม × ความแรงของ docs/12) **ไม่ใช่การทำแดชบอร์ด** จึงเก็บเฉพาะ event ดิบ ไม่มีเลข
+สรุปที่คำนวณไว้ล่วงหน้าเก็บถาวรที่ไหนเลย
+
+### ตาราง `telemetry_events`
+
+คอลัมน์: `id` (identity), `account_id` (FK → `accounts`, **`ON DELETE CASCADE`** — ลบบัญชีแล้ว
+telemetry ของบัญชีนั้นหายไปด้วย ตรงตาม docs/08-metrics.md ข้อ 4 "ต้องลบได้จริงเมื่อผู้เล่นขอลบ
+บัญชี"), `type` (string), `occurred_at` (UTC ฝั่งเซิร์ฟเวอร์เสมอ ไม่รับจากไคลเอนต์), `content_version`,
+`rules_version`, `payload` (`jsonb`) ดัชนีสองตัว: `(type, occurred_at)` สำหรับ export ตาม
+ช่วงเวลา และ `(account_id, occurred_at)` สำหรับ cascade/query ต่อบัญชี **append-only** — ไม่มี
+โค้ด update หรือ delete แถวนี้ที่ไหนเลยนอกจาก cascade ข้างต้น
+
+`Telemetry/TelemetryWriter.cs` คือที่เดียวที่สร้างแถวนี้ — `Add(...)` แค่แปะ entity ลง
+`ApiDbContext` ตัวเดียวกับที่ endpoint นั้นใช้อยู่แล้ว **ไม่เรียก `SaveChangesAsync` เอง**
+เหมือน `LedgerService` ทุกประการ ดังนั้น event จะ commit พร้อมกับการเปลี่ยนสถานะเกมที่มันพูดถึง
+เสมอ ใน transaction เดียวกัน (มักจะเป็น transaction ของ `IdempotencyService.ExecuteAsync`) —
+event มีอยู่ก็ต่อเมื่อการเปลี่ยนสถานะนั้น commit จริง ไม่มีช่องว่างให้มี event ลอย ๆ ที่ไม่มี
+อะไรเกิดขึ้นจริง หรือมีการเปลี่ยนสถานะที่ไม่มี event อธิบาย คำขอซ้ำที่ `IdempotencyService`
+เจอทาง fast path (คืนผลที่เคย commit ไปแล้ว) จึงไม่เรียก `operation()` ซ้ำ และไม่มี event ซ้ำ
+ตามไปด้วย — พิสูจน์ตรงด้วยเทสต์ (`TelemetryTests.Replaying_the_same_evolve_confirm_request_does_not_duplicate_the_event`)
+เช่นเดียวกัน การ refuse (เช่น evolve ที่ blocker ไม่ผ่าน) จบก่อนถึงจุดที่เขียน event เสมอ —
+ไม่มี event ของการกระทำที่ไม่ได้เกิดขึ้นจริง
+
+### รายการ event
+
+| `type` | เขียนที่ไหน | payload |
+| --- | --- | --- |
+| `character_obtained` | ทุกจุดที่สร้าง `OwnedCharacterEntity` ใหม่: รางวัล expedition (`ExpeditionService.SettleAsync`) และ `POST /debug/grant-character` | `{instanceId, characterId, lineId, rarity, evolveStage, source: "expedition"\|"debug", runId?, stageId?}` — `source` เป็น string เผื่อขยายเป็น `"summon"` ในอนาคตโดยไม่ต้อง migrate |
+| `expedition_started` | `POST /expeditions/start` | `{runId, stageId, members: [{instanceId, characterId, lineId, evolveStage, level, focus}]}` — สัญญาณ "ถูกเลือกลงทีม ต่อด่าน" ของ docs/12 |
+| `battle_finished` | ทุกการต่อสู้ที่เซิร์ฟเวอร์เป็นคนตัดสิน: node การต่อสู้ใน expedition (`ExpeditionService.ChooseAsync`) และ `POST /battle/run` | `{context: "expedition"\|"battle_run", runId?, stageId?, encounterId, outcome: "win"\|"loss"\|"draw", turns, members: [...]}` — draw นับแยกจาก loss ในนี้ (ต่างจากกติกาความคืบหน้าของ expedition ที่ถือว่า draw คือแพ้) เพื่อไม่ให้ telemetry กลืนข้อมูลจริงทิ้ง |
+| `evolve_completed` | `POST /evolve/confirm` (เฉพาะที่สำเร็จ) | `{instanceId, fromCharacterId, toCharacterId, lineId, fromStage, toStage, inheritedBonusPerMilleAfter, materialInstanceIds, sameLineMaterialCount}` |
+| `team_saved` | `POST /teams` | `{teamId, members: [...]}` |
+
+`lineId` คือ `CharacterData.LineId` ที่มีอยู่แล้วในเนื้อหา (จัดกลุ่มทุกขั้น evolve ของสายเดียวกัน
+เข้าด้วยกัน) — resolve จาก content pack ของเวอร์ชันที่ตัวละครนั้นถืออยู่ตอนเขียน event
+(`Telemetry/TelemetryContentResolver.cs`) ถ้าเวอร์ชันนั้นหาไม่เจอ (กรณีสุดขั้วที่ทฤษฎีจะไม่เกิด
+เพราะ `ContentPackRegistry` ยังไม่ retire เวอร์ชันไหนเลยในรอบนี้) จะ fallback ไปเวอร์ชันล่าสุด
+แทนที่จะทำให้การเขียนเกมพัง — telemetry เป็นช่องทางรอง (side channel) ไม่ใช่กฎเกม จึงไม่ยอมให้
+การหาสายตัวละครพังแล้วลากการกระทำจริงของผู้เล่นพังตามไปด้วย
+
+**ยังไม่มี `summon_pulled`** เพราะยังไม่มี endpoint สุ่มจริงในรอบนี้ (`docs/12` ข้อ 3+ ยังไม่เริ่ม)
+รูปร่าง payload ที่ตั้งใจไว้ล่วงหน้า (`Telemetry/TelemetryEvents.cs`) คือ
+`{bannerId, pullIndex, pityCounterBefore, tier, characterId, lineId, isDuplicate, shardsGranted}`
+เพื่อให้ใครสร้าง endpoint สุ่มทีหลังเจอที่ที่ต้องเติมทันที
+
+### Admin — อ่าน telemetry
+
+Gate เดียวกับ `/admin/content/*` (`AdminAuth`, `X-Admin-Token` แยกจาก token ผู้เล่นโดยสิ้นเชิง —
+ดู [11-admin-spec.md](11-admin-spec.md)) endpoint กลุ่มนี้ **อ่านอย่างเดียว** ไม่มีทางเขียนแถว
+`telemetry_events` เลย
+
+- `GET /admin/telemetry/events?type=&since=&until=&limit=&after=` — export ดิบ, keyset
+  pagination บน `id` (แถวใหม่ไม่ทำให้หน้าถัดไปข้ามหรือซ้ำ ต่างจาก offset pagination)
+  `limit` ค่าเริ่มต้น 500 สูงสุด 5000
+- `GET /admin/telemetry/lines?contentVersion=` — ต่อหนึ่งสาย stage-I: จำนวนที่ได้มา, บัญชีที่
+  ถืออยู่จริง (distinct), อัตราถูกเลือกลงทีมต่อด่าน, อัตราชนะเมื่อมี vs ไม่มีสายนั้นในทีม
+  (ต่อ encounter และรวม พร้อม `n` และเลเวลเฉลี่ยของทั้งสองกลุ่ม เพื่อให้เห็น level confounding —
+  ตรงกับที่ `docs/12` เตือนไว้ว่าต้องมีทั้งความนิยมและความแรงถึงจะบัฟถูกตัว), `lowSample: true`
+  เมื่อ `n < 30` ฝั่งใดฝั่งหนึ่ง, จำนวน evolve สำเร็จ, จำนวนครั้งที่เป็น evolve แรกของบัญชี,
+  จำนวนที่ได้มาแต่ไม่เคยใช้ (ไม่เคยอยู่ใน `expedition_started`/`battle_finished` เลย) พร้อม
+  median วันจากได้มาถึงใช้ครั้งแรก (เฉพาะที่เคยถูกใช้) — **ทุกตัวเลขคำนวณสดจาก event ดิบตอนอ่าน
+  ไม่มีอะไรถูกเก็บล่วงหน้า** ตามหลักการข้อ 1 ของ docs/08-metrics.md `contentVersion` ค่าเริ่มต้น
+  คือเวอร์ชันปัจจุบัน (`ContentPackRegistry.LatestVersion`) และ response จะบอกเสมอว่าครอบคลุม
+  เวอร์ชันไหนบ้าง (ไม่มีการผสมหลายเวอร์ชันเข้าด้วยกันแบบเงียบ ๆ)
+
 ## การเชื่อมบัญชี (account linking)
 
 `docs/04-economy-spec.md` กำหนดกรณีที่ต้องมีขั้นตอนชัดเจน: guest บนเครื่องใหม่เชื่อมกับ
@@ -230,8 +301,12 @@ Bearer token ของบัญชีที่ชนะถูกส่งกล�
   จะพร้อมรับคำขอ ฐานข้อมูลที่ต่อไม่ได้จริง ๆ ทำให้ startup ล้มเหลวไปก่อนที่ `/health` จะถูกเรียกได้
   ด้วยซ้ำ — ข้อจำกัดที่มีอยู่แล้วในการออกแบบ startup ไม่ใช่สิ่งที่รอบนี้แก้
 
-รวม **132 (กฎเกม รวม `DarkMyst.Sim.Tests`) + 43 (API, integration ทั้งหมดกับ Postgres จริง)
-= 175 เคส** — 18 เคสข้างต้นเป็นของ endpoint ในเอกสารนี้ อีก 25 เคสเป็นของหน้าจัดการ (`Admin/`,
-gate การยืนยันตัวตนแยกต่างหาก, publish/validate/rollback ของทั้งสี่ชนิดเนื้อหา, ปุ่ม sweep)
-อยู่ในไฟล์ทดสอบเดียวกัน (`tests/DarkMyst.Api.Tests/`) แต่รายละเอียดอยู่ที่
+`tests/DarkMyst.Api.Tests/` เพียงโปรเจกต์เดียวมี **59 เคส** ณ ตอนที่เพิ่ม telemetry เข้ามา
+(`TelemetryTests.cs`, `AdminTelemetryLinesTests.cs` — 16 เคสใหม่ ครอบคลุมทุก event type,
+คำขอซ้ำ/การ refuse ไม่เขียน event ซ้ำ/ไม่เขียนเลย, gate ของ `/admin/telemetry/*`, pagination
+ไม่มีช่องว่างไม่ซ้ำ, เลขคำนวณของ `/admin/telemetry/lines` ตรงกับ fixture ที่สร้างมือ และ cascade
+delete) ตัวเลขรวมทั้งรีโป (กฎเกมใน `DarkMyst.Sim.Tests` ฯลฯ) เปลี่ยนบ่อยกว่าที่เอกสารนี้จะตามทัน
+— รันคำสั่ง `dotnet test` เองเพื่อดูตัวเลขปัจจุบันแทนที่จะเชื่อเอกสาร ตามหลักที่ `HANDOFF.md`
+ยึดถือ อีก 25 เคสในโปรเจกต์เดียวกันเป็นของหน้าจัดการ (`Admin/`, gate การยืนยันตัวตนแยกต่างหาก,
+publish/validate/rollback ของทั้งสี่ชนิดเนื้อหา, ปุ่ม sweep) รายละเอียดอยู่ที่
 [11-admin-spec.md](11-admin-spec.md)
