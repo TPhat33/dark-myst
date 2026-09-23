@@ -138,19 +138,27 @@ namespace DarkMyst.Sim
         public Dictionary<int, PullCountStat> FirstAttuneCapByTier { get; set; } = new Dictionary<int, PullCountStat>();
 
         /// <summary>Largest number of consecutive pulls observed anywhere in the whole sweep
-        /// without an R4+ result — the measured proof that hard pity (<see cref="SummonRules.HardPityPull"/>)
-        /// actually bounds the worst case, not just the formula.</summary>
-        public int MaxObservedPullsWithoutR4Plus { get; set; }
+        /// without a <see cref="SummonRules.PityTier"/>-or-better result — the measured proof
+        /// that hard pity (<see cref="SummonRules.HardPityPull"/>) actually bounds the worst
+        /// case, not just the formula. For <see cref="SummonRules.Proposed"/> (PityTier 4) this
+        /// is the classic "gap without R4+".</summary>
+        public int MaxObservedPullsWithoutPityTier { get; set; }
 
-        /// <summary>Same, for R3+ against the 10-pull floor.</summary>
-        public int MaxObservedPullsWithoutR3Plus { get; set; }
+        /// <summary>Same, for <see cref="SummonRules.FloorTier"/>-or-better against the floor
+        /// (<see cref="SummonRules.FloorWindowPulls"/> + 1). For <see cref="SummonRules.Proposed"/>
+        /// (FloorTier 3) this is the classic "gap without R3+".</summary>
+        public int MaxObservedPullsWithoutFloorTier { get; set; }
     }
 
     /// <summary>
     /// Simulates the character summon system end to end (docs/12-summon-spec.md §"วิธีวัด") so
     /// every rate the doc quotes is reproducible by a command, never a feeling: roll a tier with
-    /// the three-layer guarantee (10-pull floor, soft pity from pull 40, hard pity at pull 60),
-    /// resolve it to an actual pullable stage-I line (folding empty tiers down, per
+    /// the guarantee system (an every-N-pulls floor guaranteeing <see cref="SummonRules.FloorTier"/>
+    /// or better, plus an independent soft/hard pity guaranteeing
+    /// <see cref="SummonRules.PityTier"/> or better — <see cref="SummonRules.Proposed"/> floors on
+    /// R3 every 10 pulls and pities on R4 from pull 40/60; a rule set like
+    /// <see cref="SummonRules.GenshinLike"/> floors on R4 every 10 and pities on R5 from wish
+    /// 74/90), resolve it to an actual pullable stage-I line (folding empty tiers down, per
     /// §"โครงชั้นความหายาก"), track duplicates into Echo shards, and Attune them toward the 300‰
     /// cap. No combat, no stats — <c>DarkMyst.Combat</c> is untouched by this file, matching the
     /// doc's own note that the summon system only ever hands out "access", never power.
@@ -226,8 +234,8 @@ namespace DarkMyst.Sim
                 { 2, new List<int>() }, { 3, new List<int>() }, { 4, new List<int>() }, { 5, new List<int>() }
             };
 
-            int maxGapR4Plus = 0;
-            int maxGapR3Plus = 0;
+            int maxGapPity = 0;
+            int maxGapFloor = 0;
 
             int maxPullsPerPlayer = Math.Max(request.Pulls, request.AttuneMaxPulls);
 
@@ -238,8 +246,8 @@ namespace DarkMyst.Sim
                 // would agree almost exactly and hide real variance.
                 var rng = new DeterministicRandom(request.Seed, PlayerStreamBase + (ulong)player);
 
-                int pullsSinceLastR4Plus = 0;
-                int pullsSinceLastR3Plus = 0;
+                int pullsSincePity = 0;
+                int pullsSinceFloor = 0;
 
                 var ownedLines = new HashSet<string>(StringComparer.Ordinal);
                 var shardsByLine = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -259,25 +267,22 @@ namespace DarkMyst.Sim
 
                 for (int i = 1; i <= maxPullsPerPlayer; i++)
                 {
-                    int k = pullsSinceLastR4Plus + 1;
-                    int r4PlusBp = rules.ComputeR4PlusChanceBasisPoints(k);
+                    // Pity check first (docs/12 §"การันตีสามชั้น"): roll for PityTier-or-better at
+                    // this pull's (possibly soft/hard-boosted) chance. If it fires, pick among the
+                    // tiers PityTier..5 by base-rate proportion; if not, pick among the remaining
+                    // tiers 2..PityTier-1 by base-rate proportion. The floor then only ever
+                    // upgrades a result that pity did not already lift to PityTier+.
+                    int k = pullsSincePity + 1;
+                    int pityBp = rules.ComputePityChanceBasisPoints(k);
                     int roll1 = rng.NextInt(0, 10000);
 
-                    int rolledTier;
-                    if (roll1 < r4PlusBp)
-                    {
-                        int roll2 = rng.NextInt(0, rules.R4PlusBaseBasisPoints);
-                        rolledTier = roll2 < rules.R5RateBasisPoints ? 5 : 4;
-                    }
-                    else
-                    {
-                        int roll3 = rng.NextInt(0, rules.R3RateBasisPoints + rules.R2RateBasisPoints);
-                        rolledTier = roll3 < rules.R3RateBasisPoints ? 3 : 2;
-                    }
+                    int rolledTier = roll1 < pityBp
+                        ? PickWeightedTier(rules, rules.PityTier, 5, rng)
+                        : PickWeightedTier(rules, 2, rules.PityTier - 1, rng);
 
-                    if (rolledTier < 3 && pullsSinceLastR3Plus >= rules.FloorWindowPulls)
+                    if (rolledTier < rules.FloorTier && pullsSinceFloor >= rules.FloorWindowPulls)
                     {
-                        rolledTier = 3;
+                        rolledTier = PickWeightedTier(rules, rules.FloorTier, rules.PityTier - 1, rng);
                     }
 
                     CharacterData picked = PickFromPool(poolByTier, rolledTier, rng);
@@ -286,31 +291,32 @@ namespace DarkMyst.Sim
                     // Pity reacts to what the player actually received, not the die roll that may
                     // have been folded down to a lower, non-empty tier (docs/12
                     // §"โครงชั้นความหายาก"). In content 0.4.0 only R5 is ever empty and it always
-                    // folds to R4, so this never actually demotes a roll below R4+; written this
-                    // way so a future empty R4 tier would not silently break the guarantee.
-                    if (actualTier >= 4)
+                    // folds to R4, so this never actually demotes a roll below PityTier+ for
+                    // Proposed; written this way so a future empty tier would not silently break
+                    // the guarantee for any rule set.
+                    if (actualTier >= rules.PityTier)
                     {
-                        pullsSinceLastR4Plus = 0;
+                        pullsSincePity = 0;
                     }
                     else
                     {
-                        pullsSinceLastR4Plus++;
-                        if (pullsSinceLastR4Plus > maxGapR4Plus)
+                        pullsSincePity++;
+                        if (pullsSincePity > maxGapPity)
                         {
-                            maxGapR4Plus = pullsSinceLastR4Plus;
+                            maxGapPity = pullsSincePity;
                         }
                     }
 
-                    if (actualTier >= 3)
+                    if (actualTier >= rules.FloorTier)
                     {
-                        pullsSinceLastR3Plus = 0;
+                        pullsSinceFloor = 0;
                     }
                     else
                     {
-                        pullsSinceLastR3Plus++;
-                        if (pullsSinceLastR3Plus > maxGapR3Plus)
+                        pullsSinceFloor++;
+                        if (pullsSinceFloor > maxGapFloor)
                         {
-                            maxGapR3Plus = pullsSinceLastR3Plus;
+                            maxGapFloor = pullsSinceFloor;
                         }
                     }
 
@@ -441,8 +447,8 @@ namespace DarkMyst.Sim
                 FirstR5 = Summarize(firstR5, request.Players),
                 FirstR4Exact = Summarize(firstR4Exact, request.Players),
                 FirstAttuneCapAnyLine = Summarize(firstAttuneCapAny, request.Players),
-                MaxObservedPullsWithoutR4Plus = maxGapR4Plus,
-                MaxObservedPullsWithoutR3Plus = maxGapR3Plus
+                MaxObservedPullsWithoutPityTier = maxGapPity,
+                MaxObservedPullsWithoutFloorTier = maxGapFloor
             };
 
             foreach (CharacterData line in trackedLines)
@@ -586,6 +592,37 @@ namespace DarkMyst.Sim
             }
 
             throw new InvalidOperationException("Line '" + lineId + "' was pulled but is not in any tier's pool.");
+        }
+
+        /// <summary>
+        /// Picks a tier in [<paramref name="lowTierInclusive"/>..<paramref name="highTierInclusive"/>]
+        /// weighted by base rate, checked highest tier first (so within a pity-fires roll R5 is
+        /// checked before R4, matching how a player reads "the pity roll landed on the top slice
+        /// first"). A single-tier range needs no roll at all and returns that tier without
+        /// consuming any RNG word — this is what keeps <see cref="SummonRules.Proposed"/>'s RNG
+        /// stream byte-identical to before this method existed: its own floor upgrade
+        /// (FloorTier 3 .. PityTier-1 3) is always exactly one tier.
+        /// </summary>
+        private static int PickWeightedTier(SummonRules rules, int lowTierInclusive, int highTierInclusive, DeterministicRandom rng)
+        {
+            if (lowTierInclusive >= highTierInclusive)
+            {
+                return lowTierInclusive;
+            }
+
+            int total = rules.SumRates(lowTierInclusive, highTierInclusive);
+            int roll = rng.NextInt(0, total);
+            int cumulative = 0;
+            for (int tier = highTierInclusive; tier >= lowTierInclusive; tier--)
+            {
+                cumulative += rules.RateBasisPoints(tier);
+                if (roll < cumulative)
+                {
+                    return tier;
+                }
+            }
+
+            return lowTierInclusive;
         }
 
         /// <summary>Resolves a rolled tier to an actual pullable character, folding down through

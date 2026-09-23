@@ -454,16 +454,15 @@ namespace DarkMyst.SimRunner
         /// </summary>
         private static int RunSummon(ContentPack pack, Options options)
         {
-            SummonReport report = SummonSimulator.Run(pack, new SummonRequest
+            if (options.SummonCompare)
             {
-                Players = options.SummonPlayers,
-                Pulls = options.SummonPulls,
-                AttuneMaxPulls = options.SummonAttuneMaxPulls,
-                Seed = options.Seed,
-                HypotheticalR5Count = options.SummonHypotheticalR5
-            });
+                return RunSummonCompare(pack, options);
+            }
 
-            PrintSummonHeader(report);
+            SummonRules rules = ResolveSummonRules(options.SummonRulesPreset);
+            SummonReport report = SummonSimulator.Run(pack, BuildSummonRequest(options, rules));
+
+            PrintSummonHeader(report, SummonRulesPresetName(options.SummonRulesPreset));
             Console.WriteLine();
             PrintSummonMilestones(report);
             Console.WriteLine();
@@ -476,22 +475,60 @@ namespace DarkMyst.SimRunner
             return 0;
         }
 
-        private static void PrintSummonHeader(SummonReport report)
+        private static SummonRequest BuildSummonRequest(Options options, SummonRules rules)
+        {
+            return new SummonRequest
+            {
+                Players = options.SummonPlayers,
+                Pulls = options.SummonPulls,
+                AttuneMaxPulls = options.SummonAttuneMaxPulls,
+                Seed = options.Seed,
+                HypotheticalR5Count = options.SummonHypotheticalR5,
+                Rules = rules
+            };
+        }
+
+        private static SummonRules ResolveSummonRules(string preset)
+        {
+            switch (preset)
+            {
+                case "genshin-like": return SummonRules.GenshinLike;
+                case "proposed":
+                default: return SummonRules.Proposed;
+            }
+        }
+
+        private static string SummonRulesPresetName(string preset)
+        {
+            return preset == "genshin-like" ? "GenshinLike" : "Proposed";
+        }
+
+        private static void PrintSummonHeader(SummonReport report, string presetName)
         {
             Console.WriteLine("Summon simulation (content " + report.ContentVersion + ")");
             Console.WriteLine(new string('=', 40));
+            Console.WriteLine("Preset    : " + presetName);
             Console.WriteLine(
-                "NOT LOCKED — every rate below is DarkMyst.Sim.SummonRules.Proposed, which mirrors"
-                + " docs/12-summon-spec.md but is explicitly not locked pending phase-C farm data.");
+                presetName == "GenshinLike"
+                    ? "FOR COMPARISON ONLY — Genshin Impact's public wish structure expressed in this"
+                      + " model's shape (docs/12-summon-spec.md), not a DarkMyst proposal."
+                    : "NOT LOCKED — every rate below is DarkMyst.Sim.SummonRules.Proposed, which mirrors"
+                      + " docs/12-summon-spec.md but is explicitly not locked pending phase-C farm data.");
+            // "-> R{tier}+" only appears for a rule set whose floor/pity tier differs from
+            // Proposed's implicit R3/R4 — this keeps Proposed's line byte-identical to before
+            // PityTier/FloorTier existed, while GenshinLike (which floors/pities on different
+            // tiers) says so explicitly.
+            string floorTierSuffix = report.Rules.FloorTier == 3 ? "" : " -> R" + report.Rules.FloorTier + "+";
+            string pityTierSuffix = report.Rules.PityTier == 4 ? "" : " -> R" + report.Rules.PityTier + "+";
             Console.WriteLine(
                 "Rules     : R5 " + FormatBasisPointsPercent(report.Rules.R5RateBasisPoints)
                 + "  R4 " + FormatBasisPointsPercent(report.Rules.R4RateBasisPoints)
                 + "  R3 " + FormatBasisPointsPercent(report.Rules.R3RateBasisPoints)
                 + "  R2 " + FormatBasisPointsPercent(report.Rules.R2RateBasisPoints)
-                + "  | floor every " + (report.Rules.FloorWindowPulls + 1) + " pulls"
+                + "  | floor every " + (report.Rules.FloorWindowPulls + 1) + " pulls" + floorTierSuffix
                 + "  | soft pity from pull " + report.Rules.SoftPityStartPull
                 + " (+" + FormatBasisPointsPercent(report.Rules.SoftPityBasisPointsPerStep) + "/pull)"
-                + "  | hard pity at pull " + report.Rules.HardPityPull
+                + "  | hard pity at pull " + report.Rules.HardPityPull + pityTierSuffix
                 + "  | spark at " + report.Rules.SparkThreshold + " pulls");
             Console.WriteLine(
                 "Players   : " + report.Players + "   Pull budget: " + report.Pulls
@@ -517,9 +554,10 @@ namespace DarkMyst.SimRunner
 
             Console.WriteLine();
             Console.WriteLine(
-                "Guarantee check: worst observed gap without R4+ was " + report.MaxObservedPullsWithoutR4Plus
-                + " pull(s) (hard pity bounds it at " + report.Rules.HardPityPull + "); without R3+ was "
-                + report.MaxObservedPullsWithoutR3Plus + " pull(s) (floor bounds it at "
+                "Guarantee check: worst observed gap without R" + report.Rules.PityTier + "+ was "
+                + report.MaxObservedPullsWithoutPityTier + " pull(s) (hard pity bounds it at "
+                + report.Rules.HardPityPull + "); without R" + report.Rules.FloorTier + "+ was "
+                + report.MaxObservedPullsWithoutFloorTier + " pull(s) (floor bounds it at "
                 + (report.Rules.FloorWindowPulls + 1) + ").");
         }
 
@@ -586,6 +624,122 @@ namespace DarkMyst.SimRunner
                 PrintPullCountStatInline(report.FirstAttuneCapByTier[tier]);
                 Console.WriteLine();
             }
+        }
+
+        /// <summary>
+        /// Runs both <see cref="SummonRules"/> presets on the same seed/players/pulls and prints a
+        /// compact side-by-side table of the rows the doc wants to quote when comparing our
+        /// proposed rates against Genshin Impact's — measured with one command, not argued.
+        /// </summary>
+        private static int RunSummonCompare(ContentPack pack, Options options)
+        {
+            SummonReport proposed = SummonSimulator.Run(pack, BuildSummonRequest(options, SummonRules.Proposed));
+            SummonReport genshin = SummonSimulator.Run(pack, BuildSummonRequest(options, SummonRules.GenshinLike));
+
+            Console.WriteLine("Summon comparison (content " + proposed.ContentVersion + ")");
+            Console.WriteLine(new string('=', 60));
+            Console.WriteLine(
+                "NOT LOCKED — Proposed is DarkMyst.Sim.SummonRules.Proposed (docs/12-summon-spec.md),"
+                + " not locked pending phase-C farm data. GenshinLike is Genshin Impact's public wish"
+                + " structure expressed in this model's shape, for comparison only — not a DarkMyst"
+                + " proposal.");
+            Console.WriteLine(
+                "Players   : " + proposed.Players + "   Pull budget: " + proposed.Pulls
+                + "   Attune budget: " + proposed.AttuneMaxPulls + "   Seed: " + proposed.Seed);
+            if (proposed.HypotheticalR5Count > 0)
+            {
+                Console.WriteLine(
+                    "SYNTHETIC : " + proposed.HypotheticalR5Count + " hypothetical R5 line(s) added to the"
+                    + " pool (--hypothetical-r5) for both presets.");
+            }
+
+            Console.WriteLine();
+            PrintCompareRow("", "Proposed", "GenshinLike");
+            PrintCompareRow(
+                "Base rates",
+                FormatBasisPointsPercent(proposed.Rules.R5RateBasisPoints) + "/"
+                    + FormatBasisPointsPercent(proposed.Rules.R4RateBasisPoints) + "/"
+                    + FormatBasisPointsPercent(proposed.Rules.R3RateBasisPoints) + "/"
+                    + FormatBasisPointsPercent(proposed.Rules.R2RateBasisPoints),
+                FormatBasisPointsPercent(genshin.Rules.R5RateBasisPoints) + "/"
+                    + FormatBasisPointsPercent(genshin.Rules.R4RateBasisPoints) + "/"
+                    + FormatBasisPointsPercent(genshin.Rules.R3RateBasisPoints) + "/"
+                    + FormatBasisPointsPercent(genshin.Rules.R2RateBasisPoints));
+            PrintCompareRow(
+                "Pity (R" + proposed.Rules.PityTier + "+/R" + genshin.Rules.PityTier + "+)",
+                "soft " + proposed.Rules.SoftPityStartPull + " hard " + proposed.Rules.HardPityPull,
+                "soft " + genshin.Rules.SoftPityStartPull + " hard " + genshin.Rules.HardPityPull);
+            PrintCompareRow(
+                "Floor (R" + proposed.Rules.FloorTier + "+/R" + genshin.Rules.FloorTier + "+)",
+                "every " + (proposed.Rules.FloorWindowPulls + 1),
+                "every " + (genshin.Rules.FloorWindowPulls + 1));
+            Console.WriteLine();
+
+            PrintCompareRow("First R4+ (mean)", FormatMean(proposed.FirstR4Plus), FormatMean(genshin.FirstR4Plus));
+            PrintCompareRow("First R4 (mean)", FormatMean(proposed.FirstR4Exact), FormatMean(genshin.FirstR4Exact));
+            PrintCompareRow("First R5 (mean)", FormatMean(proposed.FirstR5), FormatMean(genshin.FirstR5));
+            Console.WriteLine();
+
+            Console.WriteLine("Still missing at spark, per line:");
+            foreach (LineFirstPullStat line in proposed.PerLineFirstPull)
+            {
+                LineFirstPullStat other = genshin.PerLineFirstPull.Find(l => l.LineId == line.LineId);
+                PrintCompareRow(
+                    "  R" + line.Rarity + " " + line.LineId,
+                    FormatSparkShare(line.StillMissingAtSparkBasisPoints),
+                    other == null ? "n/a" : FormatSparkShare(other.StillMissingAtSparkBasisPoints));
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("Duplicate rate by tier:");
+            for (int tier = 5; tier >= 2; tier--)
+            {
+                TierDuplicateStat left = proposed.DuplicatesPerTier.Find(t => t.Rarity == tier);
+                TierDuplicateStat right = genshin.DuplicatesPerTier.Find(t => t.Rarity == tier);
+                if (left == null && right == null)
+                {
+                    continue;
+                }
+
+                PrintCompareRow(
+                    "  R" + tier,
+                    left == null ? "n/a" : FormatBasisPointsPercent(left.DuplicateRateBasisPoints),
+                    right == null ? "n/a" : FormatBasisPointsPercent(right.DuplicateRateBasisPoints));
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("Attune cap by tier (mean pulls, budget " + proposed.AttuneMaxPulls + "):");
+            for (int tier = 5; tier >= 2; tier--)
+            {
+                bool leftHas = proposed.FirstAttuneCapByTier.TryGetValue(tier, out PullCountStat left);
+                bool rightHas = genshin.FirstAttuneCapByTier.TryGetValue(tier, out PullCountStat right);
+                if (!leftHas && !rightHas)
+                {
+                    continue;
+                }
+
+                PrintCompareRow(
+                    "  R" + tier,
+                    leftHas ? FormatMean(left) : "n/a",
+                    rightHas ? FormatMean(right) : "n/a");
+            }
+
+            return 0;
+        }
+
+        private static void PrintCompareRow(string label, string left, string right)
+        {
+            Console.WriteLine(label.PadRight(28) + left.PadRight(24) + right);
+        }
+
+        private static string FormatMean(PullCountStat stat)
+        {
+            return stat.ReachedCount == 0 ? "never" : FormatTenths(stat.MeanTimes10) + " pulls";
+        }
+
+        private static string FormatSparkShare(int? basisPoints)
+        {
+            return basisPoints.HasValue ? FormatBasisPointsPercent(basisPoints.Value) : "n/a";
         }
 
         private static void PrintPullCountStatLine(string label, PullCountStat stat)
@@ -1258,6 +1412,14 @@ Examples
             /// <summary>summon: synthetic rarity-5 stage-I lines added to the pool.</summary>
             public int SummonHypotheticalR5 = 0;
 
+            /// <summary>summon: which <c>SummonRules</c> preset to run — "proposed" (default) or
+            /// "genshin-like".</summary>
+            public string SummonRulesPreset = "proposed";
+
+            /// <summary>summon: run both presets on the same seed/players/pulls and print a
+            /// side-by-side table instead of a single report.</summary>
+            public bool SummonCompare = false;
+
             public static Options Parse(string[] args)
             {
                 var options = new Options { Command = args[0] };
@@ -1329,6 +1491,13 @@ Examples
                             options.SummonHypotheticalR5 = int.Parse(Require(key, value), CultureInfo.InvariantCulture);
                             i++;
                             break;
+                        case "--rules":
+                            options.SummonRulesPreset = Require(key, value).ToLowerInvariant();
+                            i++;
+                            break;
+                        case "--compare":
+                            options.SummonCompare = true;
+                            break;
                         default:
                             throw new ArgumentException("Unknown option '" + key + "'.");
                     }
@@ -1338,6 +1507,12 @@ Examples
                 {
                     throw new ArgumentException("--mode must be 'encounters' or 'mirror' (got '"
                         + options.MatrixMode + "').");
+                }
+
+                if (options.SummonRulesPreset != "proposed" && options.SummonRulesPreset != "genshin-like")
+                {
+                    throw new ArgumentException("--rules must be 'proposed' or 'genshin-like' (got '"
+                        + options.SummonRulesPreset + "').");
                 }
 
                 if (options.Repeat < 0)

@@ -87,11 +87,11 @@ namespace DarkMyst.Sim.Tests
             });
 
             Assert.True(
-                report.MaxObservedPullsWithoutR4Plus <= 60,
-                "observed a gap of " + report.MaxObservedPullsWithoutR4Plus + " pulls without R4+, hard pity is 60.");
+                report.MaxObservedPullsWithoutPityTier <= 60,
+                "observed a gap of " + report.MaxObservedPullsWithoutPityTier + " pulls without R4+, hard pity is 60.");
             Assert.True(
-                report.MaxObservedPullsWithoutR3Plus <= 10,
-                "observed a gap of " + report.MaxObservedPullsWithoutR3Plus + " pulls without R3+, the floor is 10.");
+                report.MaxObservedPullsWithoutFloorTier <= 10,
+                "observed a gap of " + report.MaxObservedPullsWithoutFloorTier + " pulls without R3+, the floor is 10.");
         }
 
         [Fact]
@@ -105,7 +105,7 @@ namespace DarkMyst.Sim.Tests
             Assert.Equal(a.FirstR4Plus.MeanTimes10, b.FirstR4Plus.MeanTimes10);
             Assert.Equal(a.FirstR4Plus.ReachedCount, b.FirstR4Plus.ReachedCount);
             Assert.Equal(a.FirstR5.ReachedCount, b.FirstR5.ReachedCount);
-            Assert.Equal(a.MaxObservedPullsWithoutR4Plus, b.MaxObservedPullsWithoutR4Plus);
+            Assert.Equal(a.MaxObservedPullsWithoutPityTier, b.MaxObservedPullsWithoutPityTier);
             Assert.Equal(a.DuplicatesPerLine.Count, b.DuplicatesPerLine.Count);
             for (int i = 0; i < a.DuplicatesPerLine.Count; i++)
             {
@@ -226,6 +226,187 @@ namespace DarkMyst.Sim.Tests
 
             Assert.NotNull(report.FirstAttuneCapAnyLine);
             Assert.InRange(report.FirstAttuneCapAnyLine.ReachedCount, 0, 300);
+        }
+
+        // ------------------------------------------------------------------
+        // Lock test — SummonRules.Proposed must stay byte-identical through the PityTier/
+        // FloorTier generalization (§"การันตีสามชั้น"). Every number below was captured from
+        // `simrunner summon --seed 20260920` (10000 players, 300 pulls, 5000-pull Attune budget)
+        // BEFORE PityTier/FloorTier were introduced.
+        // ------------------------------------------------------------------
+
+        [Fact]
+        public void Proposed_produces_byte_identical_numbers_to_before_the_PityTier_FloorTier_generalization()
+        {
+            SummonReport report = SummonSimulator.Run(Pack.Value, new SummonRequest
+            {
+                Players = 10000,
+                Pulls = 300,
+                AttuneMaxPulls = 5000,
+                Seed = 20260920
+            });
+
+            Assert.Equal(4, report.Rules.PityTier);
+            Assert.Equal(3, report.Rules.FloorTier);
+            Assert.Equal(59, report.MaxObservedPullsWithoutPityTier);
+            Assert.Equal(9, report.MaxObservedPullsWithoutFloorTier);
+
+            AssertStat(report.FirstR4Plus, meanTimes10: 212, median: 17, p90: 45, worst: 58, reachedCount: 10000);
+            AssertStat(report.FirstR4Exact, meanTimes10: 212, median: 17, p90: 45, worst: 58, reachedCount: 10000);
+            Assert.Equal(0, report.FirstR5.ReachedCount);
+
+            LineFirstPullStat shackleborn = report.PerLineFirstPull.Find(l => l.LineId == "chr_shackleborn_i");
+            Assert.NotNull(shackleborn);
+            AssertStat(shackleborn.Stat, meanTimes10: 425, median: 35, p90: 91, worst: 292, reachedCount: 10000 - 3);
+            Assert.Equal(197, shackleborn.StillMissingAtSparkBasisPoints);
+
+            LineFirstPullStat tideOracle = report.PerLineFirstPull.Find(l => l.LineId == "chr_tide_oracle_i");
+            Assert.NotNull(tideOracle);
+            AssertStat(tideOracle.Stat, meanTimes10: 423, median: 35, p90: 91, worst: 300, reachedCount: 10000 - 5);
+            Assert.Equal(193, tideOracle.StillMissingAtSparkBasisPoints);
+
+            AssertTierDuplicates(report, rarity: 4, totalPulls: 139274, duplicates: 119282);
+            AssertTierDuplicates(report, rarity: 3, totalPulls: 1078598, duplicates: 978599);
+            AssertTierDuplicates(report, rarity: 2, totalPulls: 1782128, duplicates: 1762128);
+
+            AssertStat(report.FirstAttuneCapAnyLine, meanTimes10: 7829, median: 784, p90: 821, worst: 880, reachedCount: 10000);
+            AssertStat(report.FirstAttuneCapByTier[4], meanTimes10: 24009, median: 2406, p90: 2669, worst: 3175, reachedCount: 10000);
+            AssertStat(report.FirstAttuneCapByTier[3], meanTimes10: 29100, median: 2921, p90: 3097, worst: 3501, reachedCount: 10000);
+            AssertStat(report.FirstAttuneCapByTier[2], meanTimes10: 7829, median: 784, p90: 821, worst: 880, reachedCount: 10000);
+        }
+
+        private static void AssertStat(PullCountStat stat, int meanTimes10, int median, int p90, int worst, int reachedCount)
+        {
+            Assert.Equal(meanTimes10, stat.MeanTimes10);
+            Assert.Equal(median, stat.Median);
+            Assert.Equal(p90, stat.P90);
+            Assert.Equal(worst, stat.Worst);
+            Assert.Equal(reachedCount, stat.ReachedCount);
+        }
+
+        private static void AssertTierDuplicates(SummonReport report, int rarity, long totalPulls, long duplicates)
+        {
+            TierDuplicateStat tier = report.DuplicatesPerTier.Find(t => t.Rarity == rarity);
+            Assert.NotNull(tier);
+            Assert.Equal(totalPulls, tier.TotalPulls);
+            Assert.Equal(duplicates, tier.Duplicates);
+        }
+
+        // ------------------------------------------------------------------
+        // SummonRules.GenshinLike — Genshin Impact's public wish structure expressed in this
+        // model's shape (docs/12 asks this be measured, not argued): PityTier 5 (soft from 74,
+        // hard 90), FloorTier 4 (every 10), independent counters.
+        // ------------------------------------------------------------------
+
+        [Theory]
+        [InlineData(73, 60)]
+        [InlineData(74, 660)]
+        [InlineData(89, 9660)]
+        [InlineData(90, 10000)]
+        public void GenshinLike_soft_pity_ramp_matches_the_documented_breakpoints(int pullsSincePity, int expectedBasisPoints)
+        {
+            // R5 base is 60bp (0.6%). Soft pity adds 600bp/pull from pull 74. At k=89 the ramp
+            // gives 60 + 600*16 = 9660bp — still short of the 10000bp hard-pity cap, so pull 90's
+            // jump to 10000 is the hard-pity rule firing, not the ramp saturating on its own; the
+            // ramp never needs its own clamp for this preset.
+            Assert.Equal(expectedBasisPoints, SummonRules.GenshinLike.ComputePityChanceBasisPoints(pullsSincePity));
+        }
+
+        [Fact]
+        public void GenshinLike_floor_upgrade_range_is_exactly_the_tier_between_FloorTier_and_PityTier()
+        {
+            // "rolled within [FloorTier..PityTier-1] by base-rate proportion" — for GenshinLike
+            // that range is the single tier R4, matching Genshin's "10 wishes guarantees 4-star or
+            // better" (never straight to 5-star; a 5-star before then only ever comes from the
+            // independent pity/base roll, not the floor).
+            Assert.Equal(4, SummonRules.GenshinLike.FloorTier);
+            Assert.Equal(5, SummonRules.GenshinLike.PityTier);
+            Assert.Equal(
+                SummonRules.GenshinLike.R4RateBasisPoints,
+                SummonRules.GenshinLike.SumRates(SummonRules.GenshinLike.FloorTier, SummonRules.GenshinLike.PityTier - 1));
+
+            // Same check for Proposed: the range is the single tier R3, matching today's floor.
+            Assert.Equal(3, SummonRules.Proposed.FloorTier);
+            Assert.Equal(4, SummonRules.Proposed.PityTier);
+            Assert.Equal(
+                SummonRules.Proposed.R3RateBasisPoints,
+                SummonRules.Proposed.SumRates(SummonRules.Proposed.FloorTier, SummonRules.Proposed.PityTier - 1));
+        }
+
+        [Fact]
+        public void GenshinLike_never_exceeds_90_pulls_without_R5_and_never_10_without_R4Plus()
+        {
+            SummonReport report = SummonSimulator.Run(Pack.Value, new SummonRequest
+            {
+                Players = 300,
+                Pulls = 400,
+                AttuneMaxPulls = 400,
+                Seed = 20260923,
+                HypotheticalR5Count = 1,
+                Rules = SummonRules.GenshinLike
+            });
+
+            Assert.True(
+                report.MaxObservedPullsWithoutPityTier <= 90,
+                "observed a gap of " + report.MaxObservedPullsWithoutPityTier + " pulls without R5, hard pity is 90.");
+            Assert.True(
+                report.MaxObservedPullsWithoutFloorTier <= 10,
+                "observed a gap of " + report.MaxObservedPullsWithoutFloorTier + " pulls without R4+, the floor is 10.");
+        }
+
+        [Fact]
+        public void GenshinLike_observed_R5_rate_is_close_to_the_base_rate_with_pity_disabled()
+        {
+            SummonRules noPity = SummonRules.GenshinLike.WithPityDisabled();
+            SummonReport report = SummonSimulator.Run(Pack.Value, new SummonRequest
+            {
+                Players = 4000,
+                Pulls = 300,
+                AttuneMaxPulls = 300,
+                Seed = 99,
+                HypotheticalR5Count = 1,
+                Rules = noPity
+            });
+
+            TierDuplicateStat r5 = report.DuplicatesPerTier.Find(t => t.Rarity == 5);
+            Assert.NotNull(r5);
+
+            // Base rate is 60bp = 0.6%. No pity means no boost toward it; allow a wide statistical
+            // band (0.3%-0.9%) rather than pin an exact float, since this is a random sweep over a
+            // rare event.
+            long totalPulls = 4000L * 300;
+            double actualPercent = r5.TotalPulls * 100.0 / totalPulls;
+            Assert.InRange(actualPercent, 0.3, 0.9);
+        }
+
+        [Fact]
+        public void Floor_upgrades_a_below_floor_result_to_exactly_FloorTier_for_both_presets()
+        {
+            // With pity disabled, the only guarantee left standing is the floor, so any
+            // observed gap without FloorTier-or-better is proof the floor itself upgraded a
+            // result — pity never had the chance to.
+            SummonRules proposedNoPity = SummonRules.Proposed.WithPityDisabled();
+            SummonReport proposedReport = SummonSimulator.Run(Pack.Value, new SummonRequest
+            {
+                Players = 300,
+                Pulls = 300,
+                AttuneMaxPulls = 300,
+                Seed = 20260923,
+                Rules = proposedNoPity
+            });
+            Assert.True(proposedReport.MaxObservedPullsWithoutFloorTier <= 10);
+
+            SummonRules genshinNoPity = SummonRules.GenshinLike.WithPityDisabled();
+            SummonReport genshinReport = SummonSimulator.Run(Pack.Value, new SummonRequest
+            {
+                Players = 300,
+                Pulls = 300,
+                AttuneMaxPulls = 300,
+                Seed = 20260923,
+                HypotheticalR5Count = 1,
+                Rules = genshinNoPity
+            });
+            Assert.True(genshinReport.MaxObservedPullsWithoutFloorTier <= 10);
         }
 
         // ------------------------------------------------------------------
