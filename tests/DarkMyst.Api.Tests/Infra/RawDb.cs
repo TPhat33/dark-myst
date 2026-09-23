@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Npgsql;
@@ -128,6 +129,64 @@ namespace DarkMyst.Api.Tests.Infra
             cmd.Parameters.AddWithValue("id", runId);
             cmd.Parameters.AddWithValue("owner", ownerId);
             cmd.Parameters.AddWithValue("version", retiredContentVersion);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        public static async Task<int> GetTelemetryEventCountAsync(string connectionString, string accountId, string type = null)
+        {
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync();
+            string sql = "SELECT COUNT(*) FROM telemetry_events WHERE account_id = @id"
+                + (type != null ? " AND type = @type" : string.Empty);
+            await using var cmd = new NpgsqlCommand(sql, connection);
+            cmd.Parameters.AddWithValue("id", accountId);
+            if (type != null)
+            {
+                cmd.Parameters.AddWithValue("type", type);
+            }
+
+            return (int)(long)await cmd.ExecuteScalarAsync();
+        }
+
+        /// <summary>Deletes the account row directly — the cascade-delete test's only way to
+        /// exercise <c>ON DELETE CASCADE</c> without a real account-deletion endpoint (none exists
+        /// yet; docs/08-metrics.md still requires the column support it). Clears
+        /// <c>owned_characters</c> first: that table's own FK to <c>accounts</c> has no cascade
+        /// (deleting a player's characters is a real feature this round does not build), and would
+        /// otherwise block the delete this helper exists to perform.</summary>
+        public static async Task DeleteAccountAsync(string connectionString, string accountId)
+        {
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync();
+            await using (var clearCharacters = new NpgsqlCommand("DELETE FROM owned_characters WHERE owner_id = @id", connection))
+            {
+                clearCharacters.Parameters.AddWithValue("id", accountId);
+                await clearCharacters.ExecuteNonQueryAsync();
+            }
+
+            await using var cmd = new NpgsqlCommand("DELETE FROM accounts WHERE id = @id", connection);
+            cmd.Parameters.AddWithValue("id", accountId);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        /// <summary>Backdates the most recently written telemetry event of a given type for an
+        /// account — the only way a test can control "days from obtained to first use" without
+        /// waiting real days between the two calls that produce those two events.</summary>
+        public static async Task BackdateLatestTelemetryEventAsync(
+            string connectionString, string accountId, string type, DateTimeOffset occurredAt)
+        {
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync();
+            await using var cmd = new NpgsqlCommand(
+                @"UPDATE telemetry_events SET occurred_at = @occurredAt
+                  WHERE id = (
+                    SELECT id FROM telemetry_events
+                    WHERE account_id = @id AND type = @type
+                    ORDER BY id DESC LIMIT 1)",
+                connection);
+            cmd.Parameters.AddWithValue("id", accountId);
+            cmd.Parameters.AddWithValue("type", type);
+            cmd.Parameters.AddWithValue("occurredAt", occurredAt);
             await cmd.ExecuteNonQueryAsync();
         }
     }
