@@ -9,7 +9,7 @@
 ## เริ่มต้น
 
 ```bash
-dotnet test                                              # กฎเกม (132) + API กับ Postgres จริง (43) = 175 เคส
+dotnet test                                              # กฎเกม (149) + API กับ Postgres จริง (43) = 192 เคส
 dotnet run --project tools/DarkMyst.SimRunner -- validate # ตรวจ content pack
 ./tools/build-unity-plugins.sh                            # เตรียมโปรเจกต์ Unity
 
@@ -49,6 +49,11 @@ dotnet run --project tools/DarkMyst.SimRunner -- expedition \
 # วัดความหลากหลายของโรสเตอร์: หลายทีมสู้กับหลายด่านพร้อมกัน พิมพ์เป็นตาราง
 dotnet run --project tools/DarkMyst.SimRunner -- matrix --level 12 --repeat 300 \
   --rosters "balanced=chr_ashen_knight_i,chr_grave_warden_i,chr_ember_adept_i,chr_tide_oracle_i,chr_pale_stalker_i;no_healer=chr_ashen_knight_i,chr_grave_warden_i,chr_thorn_maiden_i,chr_mire_hexer_i,chr_pale_stalker_i"
+
+# วัดระบบสุ่มตัวละคร: จำลองผู้เล่นหลายพันคน ดูการกระจายของจำนวนครั้งจนได้ R4/R5 ตัวแรก
+# อัตราตัวซ้ำ และจำนวนครั้งจน Attune เต็มเพดาน (docs/12-summon-spec.md §"วิธีวัด")
+dotnet run --project tools/DarkMyst.SimRunner -- summon --seed 20260920
+dotnet run --project tools/DarkMyst.SimRunner -- summon --seed 20260920 --hypothetical-r5 1
 ```
 
 ทีมสุดท้ายไม่มีตัวฮีล อัตราชนะ 0% — การจัดทีมมีผลจริง ไม่ใช่แค่ความรู้สึก
@@ -63,7 +68,7 @@ src/DarkMyst.Sim/          ไลบรารี battle sweep ที่ simrunne
 server/DarkMyst.Api/       Game API (ระยะ D) — บัญชี evolve การสำรวจ อ้างอิงไลบรารีข้างบนทั้งหมด
 admin/                     หน้าจัดการเนื้อหา (Vue 3 + TypeScript) — แก้ตัวละคร/สกิล/ศัตรู/encounter, sweep, validate/publish/rollback ผ่าน Game API
 tests/                     เทสต์ของกฎทั้งหมด + เทสต์ API กับ Postgres จริง
-tools/DarkMyst.SimRunner/  CLI: validate / battle / sweep / expedition / matrix
+tools/DarkMyst.SimRunner/  CLI: validate / battle / sweep / expedition / matrix / roster / summon
 content/                   ข้อมูลเกมทั้งหมดเป็น JSON — แหล่งความจริงชุดเดียว
 unity/DarkMyst/            โปรเจกต์ Unity (2022.3 LTS)
 docs/                      เอกสารออกแบบ
