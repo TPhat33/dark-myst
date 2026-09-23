@@ -12,8 +12,8 @@ No pull request has been opened and none should be without the user asking.
 
 Measured by running the commands, not recalled:
 
-- `dotnet test` — **175 green, 0 failed**: Combat 55, Content 51, Expedition 20, Sim 6,
-  Api 43. (The `DbUpdateException` lines in the Api log are tests that deliberately
+- `dotnet test` — **221 green, 0 failed**: Combat 55, Content 51, Expedition 20, Sim 32,
+  Api 63. (The `DbUpdateException` lines in the Api log are tests that deliberately
   exercise the idempotency conflict path, not failures.)
 - `simrunner validate` — Content 0.4.0 valid for rules 1.0.0: 19 characters, 8 enemies,
   4 encounters, 40 skills, 1 expedition stage, 3 reward tables, 2 events.
@@ -114,7 +114,7 @@ batching** — two agents have already been cut off mid-stream by Sonnet rate li
 ## Environment facts that cost effort to establish
 
 - **PostgreSQL 16 is installed but not started automatically.** Run
-  `service postgresql start` before `dotnet test`, or the 43 Api tests fail. Connect over
+  `service postgresql start` before `dotnet test`, or the 63 Api tests fail. Connect over
   **TCP 127.0.0.1**, not the unix socket — peer auth rejects the `darkmyst` role
   (see `server/DarkMyst.Api/appsettings.Development.json`).
 - **Docker is unavailable**, so Testcontainers is not an option; the Api tests run against
