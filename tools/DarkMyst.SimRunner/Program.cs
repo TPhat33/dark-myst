@@ -30,6 +30,11 @@ namespace DarkMyst.SimRunner
     /// someone measures a 30-point win-rate swing. Enforced in CI by
     /// <c>DarkMyst.Content.Tests/RosterShapeTests.cs</c>; this command is the human-readable
     /// view of the same counts.</description></item>
+    /// <item><description><c>summon</c> — simulate the character summon system
+    /// (docs/12-summon-spec.md §"วิธีวัด") across many players and report pulls-to-first-R4/R5,
+    /// per-line first-pull and duplicate rates, and pulls until Attune caps a line at 300‰. Rates
+    /// come from <c>DarkMyst.Sim.SummonRules.Proposed</c>, which docs/12 states plainly are not
+    /// locked.</description></item>
     /// </list>
     /// </summary>
     public static class Program
@@ -88,6 +93,9 @@ namespace DarkMyst.SimRunner
 
                 case "roster":
                     return RunRoster(pack);
+
+                case "summon":
+                    return RunSummon(pack, options);
 
                 default:
                     Console.Error.WriteLine("Unknown command '" + options.Command + "'.");
@@ -433,6 +441,190 @@ namespace DarkMyst.SimRunner
                     + concentration.ToString("0.0", CultureInfo.InvariantCulture)
                     + "% of the tier.");
             }
+        }
+
+        // ------------------------------------------------------------------
+        // summon
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// Runs <c>DarkMyst.Sim.SummonSimulator</c> and prints its report (docs/12-summon-spec.md
+        /// §"วิธีวัด"). All the arithmetic lives in the library; this only formats it, the same
+        /// split <see cref="RunSweep"/> keeps with <c>BattleSweepRunner</c>.
+        /// </summary>
+        private static int RunSummon(ContentPack pack, Options options)
+        {
+            SummonReport report = SummonSimulator.Run(pack, new SummonRequest
+            {
+                Players = options.SummonPlayers,
+                Pulls = options.SummonPulls,
+                AttuneMaxPulls = options.SummonAttuneMaxPulls,
+                Seed = options.Seed,
+                HypotheticalR5Count = options.SummonHypotheticalR5
+            });
+
+            PrintSummonHeader(report);
+            Console.WriteLine();
+            PrintSummonMilestones(report);
+            Console.WriteLine();
+            PrintSummonPerLine(report);
+            Console.WriteLine();
+            PrintSummonDuplicates(report);
+            Console.WriteLine();
+            PrintSummonAttune(report);
+
+            return 0;
+        }
+
+        private static void PrintSummonHeader(SummonReport report)
+        {
+            Console.WriteLine("Summon simulation (content " + report.ContentVersion + ")");
+            Console.WriteLine(new string('=', 40));
+            Console.WriteLine(
+                "NOT LOCKED — every rate below is DarkMyst.Sim.SummonRules.Proposed, which mirrors"
+                + " docs/12-summon-spec.md but is explicitly not locked pending phase-C farm data.");
+            Console.WriteLine(
+                "Rules     : R5 " + FormatBasisPointsPercent(report.Rules.R5RateBasisPoints)
+                + "  R4 " + FormatBasisPointsPercent(report.Rules.R4RateBasisPoints)
+                + "  R3 " + FormatBasisPointsPercent(report.Rules.R3RateBasisPoints)
+                + "  R2 " + FormatBasisPointsPercent(report.Rules.R2RateBasisPoints)
+                + "  | floor every " + (report.Rules.FloorWindowPulls + 1) + " pulls"
+                + "  | soft pity from pull " + report.Rules.SoftPityStartPull
+                + " (+" + FormatBasisPointsPercent(report.Rules.SoftPityBasisPointsPerStep) + "/pull)"
+                + "  | hard pity at pull " + report.Rules.HardPityPull
+                + "  | spark at " + report.Rules.SparkThreshold + " pulls");
+            Console.WriteLine(
+                "Players   : " + report.Players + "   Pull budget: " + report.Pulls
+                + "   Attune budget: " + report.AttuneMaxPulls + "   Seed: " + report.Seed);
+
+            if (report.HypotheticalR5Count > 0)
+            {
+                Console.WriteLine(
+                    "SYNTHETIC : " + report.HypotheticalR5Count + " hypothetical R5 line(s) added to the pool"
+                    + " (--hypothetical-r5) — every R5 number below is measured against a line that does"
+                    + " not exist in content yet.");
+            }
+
+            if (report.EmptyTierWarnings.Count > 0)
+            {
+                Console.WriteLine();
+                Console.WriteLine("EMPTY TIER WARNING:");
+                foreach (string warning in report.EmptyTierWarnings)
+                {
+                    Console.WriteLine("  " + warning);
+                }
+            }
+
+            Console.WriteLine();
+            Console.WriteLine(
+                "Guarantee check: worst observed gap without R4+ was " + report.MaxObservedPullsWithoutR4Plus
+                + " pull(s) (hard pity bounds it at " + report.Rules.HardPityPull + "); without R3+ was "
+                + report.MaxObservedPullsWithoutR3Plus + " pull(s) (floor bounds it at "
+                + (report.Rules.FloorWindowPulls + 1) + ").");
+        }
+
+        private static void PrintSummonMilestones(SummonReport report)
+        {
+            Console.WriteLine("Pulls to first milestone (mean, median, p90, worst; over players who reached it):");
+            PrintPullCountStatLine("R4+", report.FirstR4Plus);
+            PrintPullCountStatLine("R4 exactly", report.FirstR4Exact);
+            PrintPullCountStatLine("R5", report.FirstR5);
+        }
+
+        private static void PrintSummonPerLine(SummonReport report)
+        {
+            Console.WriteLine("Pulls to first copy, per R4/R5 line (mean, median, p90, worst, never, share still missing at spark):");
+            foreach (LineFirstPullStat line in report.PerLineFirstPull)
+            {
+                string label = "R" + line.Rarity + " " + line.LineId + (line.IsHypothetical ? " (hypothetical)" : "");
+                Console.WriteLine("  " + label);
+                Console.Write("    ");
+                PrintPullCountStatInline(line.Stat);
+                string sparkShare = line.StillMissingAtSparkBasisPoints.HasValue
+                    ? FormatBasisPointsPercent(line.StillMissingAtSparkBasisPoints.Value)
+                    : "n/a (pull budget < spark threshold)";
+                Console.WriteLine("    still missing at spark: " + sparkShare);
+            }
+        }
+
+        private static void PrintSummonDuplicates(SummonReport report)
+        {
+            Console.WriteLine("Duplicate rate by tier (pulls, duplicates, rate):");
+            foreach (TierDuplicateStat tier in report.DuplicatesPerTier)
+            {
+                Console.WriteLine(
+                    "  R" + tier.Rarity + "  pulls " + tier.TotalPulls.ToString().PadLeft(8)
+                    + "  duplicates " + tier.Duplicates.ToString().PadLeft(8)
+                    + "  " + FormatBasisPointsPercent(tier.DuplicateRateBasisPoints));
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("Duplicate rate by line (pulls, duplicates, rate):");
+            foreach (LineDuplicateStat line in report.DuplicatesPerLine)
+            {
+                Console.WriteLine(
+                    "  R" + line.Rarity + " " + line.LineId.PadRight(28)
+                    + "pulls " + line.TotalPulls.ToString().PadLeft(6)
+                    + "  duplicates " + line.Duplicates.ToString().PadLeft(6)
+                    + "  " + FormatBasisPointsPercent(line.DuplicateRateBasisPoints));
+            }
+        }
+
+        private static void PrintSummonAttune(SummonReport report)
+        {
+            Console.WriteLine(
+                "Pulls until a line reaches the Attune cap (budget " + report.AttuneMaxPulls + " pulls):");
+            Console.Write("  any tier  ");
+            PrintPullCountStatInline(report.FirstAttuneCapAnyLine);
+            Console.WriteLine();
+
+            var tiers = new List<int>(report.FirstAttuneCapByTier.Keys);
+            tiers.Sort();
+            foreach (int tier in tiers)
+            {
+                Console.Write("  R" + tier + "        ");
+                PrintPullCountStatInline(report.FirstAttuneCapByTier[tier]);
+                Console.WriteLine();
+            }
+        }
+
+        private static void PrintPullCountStatLine(string label, PullCountStat stat)
+        {
+            Console.Write("  " + label.PadRight(12));
+            PrintPullCountStatInline(stat);
+            Console.WriteLine();
+        }
+
+        private static void PrintPullCountStatInline(PullCountStat stat)
+        {
+            if (stat.ReachedCount == 0)
+            {
+                Console.Write("no player reached this within budget (0/" + stat.Players + ")");
+                return;
+            }
+
+            Console.Write(
+                "mean " + FormatTenths(stat.MeanTimes10).PadLeft(6)
+                + "  median " + stat.Median.ToString().PadLeft(4)
+                + "  p90 " + stat.P90.ToString().PadLeft(4)
+                + "  worst " + stat.Worst.ToString().PadLeft(4)
+                + "  never " + stat.NeverReachedCount + "/" + stat.Players);
+        }
+
+        /// <summary>Formats a basis-point value (0..10000, 1bp = 0.01%) as a one-decimal percent
+        /// string using only integer division — no floating point in the sim, only in how a
+        /// count gets displayed.</summary>
+        private static string FormatBasisPointsPercent(int basisPoints)
+        {
+            int tenths = basisPoints / 10;
+            return FormatTenths(tenths) + "%";
+        }
+
+        /// <summary>Formats a value already scaled by 10 (e.g. a mean pull count times 10) as a
+        /// one-decimal string using only integer division.</summary>
+        private static string FormatTenths(int valueTimesTen)
+        {
+            return (valueTimesTen / 10) + "." + (valueTimesTen % 10);
         }
 
         // ------------------------------------------------------------------
@@ -983,6 +1175,7 @@ Commands
   expedition               Auto-play one expedition stage, or sweep many seeds of it.
   matrix                   Run named rosters against encounters (or each other) and print a table.
   roster                   Print the content pack's affinity/role/rarity composition.
+  summon                   Simulate the character summon system and report pity/duplicate/Attune stats.
 
 Options
   --content <dir>          Content directory (default: ./content)
@@ -996,6 +1189,10 @@ Options
   --rosters-file <path>    File of 'name=a,b,c,d,e' lines (one roster per line, '#' comments)
   --encounters <a,b,c>     Encounters matrix tests against (default: every encounter in the pack)
   --mode <encounters|mirror>  matrix opponents: encounters (default) or the other rosters
+  --players <n>            summon: players to simulate (default: 10000)
+  --pulls <n>              summon: pull budget per player, all sections but Attune (default: 300)
+  --attune-max-pulls <n>   summon: separate, larger pull budget for the Attune section (default: 5000)
+  --hypothetical-r5 <n>    summon: add N synthetic R5 lines so the R5 row can be measured before one is authored
 
 Examples
   simrunner validate
@@ -1005,7 +1202,9 @@ Examples
   simrunner expedition --stage stg_ashfields --seed 20260920
   simrunner expedition --stage stg_ashfields --repeat 200 --level 12
   simrunner matrix --level 12 --repeat 300 \
-    --rosters ""balanced=chr_ashen_knight_i,chr_grave_warden_i,chr_ember_adept_i,chr_tide_oracle_i,chr_pale_stalker_i;no_healer=chr_ashen_knight_i,chr_grave_warden_i,chr_thorn_maiden_i,chr_mire_hexer_i,chr_pale_stalker_i""");
+    --rosters ""balanced=chr_ashen_knight_i,chr_grave_warden_i,chr_ember_adept_i,chr_tide_oracle_i,chr_pale_stalker_i;no_healer=chr_ashen_knight_i,chr_grave_warden_i,chr_thorn_maiden_i,chr_mire_hexer_i,chr_pale_stalker_i""
+  simrunner summon --seed 20260920
+  simrunner summon --seed 20260920 --hypothetical-r5 1");
         }
 
         private sealed class Options
@@ -1046,6 +1245,18 @@ Examples
             /// <summary>matrix: "encounters" (default, roster vs. each named encounter) or
             /// "mirror" (roster vs. every other named roster).</summary>
             public string MatrixMode = "encounters";
+
+            /// <summary>summon: players to simulate.</summary>
+            public int SummonPlayers = 10000;
+
+            /// <summary>summon: pull budget per player for every section except Attune.</summary>
+            public int SummonPulls = 300;
+
+            /// <summary>summon: separate, larger pull budget for the Attune section.</summary>
+            public int SummonAttuneMaxPulls = 5000;
+
+            /// <summary>summon: synthetic rarity-5 stage-I lines added to the pool.</summary>
+            public int SummonHypotheticalR5 = 0;
 
             public static Options Parse(string[] args)
             {
@@ -1100,6 +1311,22 @@ Examples
                             break;
                         case "--mode":
                             options.MatrixMode = Require(key, value);
+                            i++;
+                            break;
+                        case "--players":
+                            options.SummonPlayers = int.Parse(Require(key, value), CultureInfo.InvariantCulture);
+                            i++;
+                            break;
+                        case "--pulls":
+                            options.SummonPulls = int.Parse(Require(key, value), CultureInfo.InvariantCulture);
+                            i++;
+                            break;
+                        case "--attune-max-pulls":
+                            options.SummonAttuneMaxPulls = int.Parse(Require(key, value), CultureInfo.InvariantCulture);
+                            i++;
+                            break;
+                        case "--hypothetical-r5":
+                            options.SummonHypotheticalR5 = int.Parse(Require(key, value), CultureInfo.InvariantCulture);
                             i++;
                             break;
                         default:
