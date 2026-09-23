@@ -306,6 +306,64 @@ R4+ ก้อนเดิมถูกแบ่งจริงระหว่า�
 **อัตรายังไม่ล็อก** — ตัวเลขข้างบนเป็นตัวเลขที่วัดได้จาก `SummonRules.Proposed` ปัจจุบันเท่านั้น
 ยังต้องรอข้อมูลฟาร์มจริงจากระยะ C ตามหัวข้อ "สิ่งที่ต้องมีก่อนล็อกตัวเลข" ข้างบน
 
+### เทียบกับโครงแบบ Genshin
+
+```
+$ dotnet run --project tools/DarkMyst.SimRunner -- summon --seed 20260920 --hypothetical-r5 1 --compare
+
+Summon comparison (content 0.4.0)
+============================================================
+NOT LOCKED — Proposed is DarkMyst.Sim.SummonRules.Proposed (docs/12-summon-spec.md), not locked pending phase-C farm data. GenshinLike is Genshin Impact's public wish structure expressed in this model's shape, for comparison only — not a DarkMyst proposal.
+Players   : 10000   Pull budget: 300   Attune budget: 5000   Seed: 20260920
+SYNTHETIC : 1 hypothetical R5 line(s) added to the pool (--hypothetical-r5) for both presets.
+
+                            Proposed                GenshinLike
+Base rates                  1.0%/3.0%/36.0%/60.0%   0.6%/5.1%/35.3%/58.9%
+Pity (R4+/R5+)              soft 40 hard 60         soft 74 hard 90
+Floor (R3+/R4+)             every 10                every 10
+
+First R4+ (mean)            21.2 pulls              7.8 pulls
+First R4 (mean)             28.1 pulls              8.2 pulls
+First R5 (mean)             77.6 pulls              61.9 pulls
+
+Still missing at spark, per line:
+  R5 hypothetical-r5-1      16.2%                   0.0%
+  R4 chr_shackleborn_i      6.0%                    0.0%
+  R4 chr_tide_oracle_i      5.9%                    0.0%
+
+Duplicate rate by tier:
+  R5                        71.9%                   77.0%
+  R4                        80.9%                   94.3%
+  R3                        90.7%                   89.7%
+  R2                        98.8%                   98.7%
+
+Attune cap by tier (mean pulls, budget 5000):
+  R5                        2630.6 pulls            1929.9 pulls
+  R4                        3199.5 pulls            962.7 pulls
+  R3                        2910.0 pulls            3221.0 pulls
+  R2                        782.9 pulls             856.6 pulls
+```
+
+อ่านตารางนี้ต้องระวังสองเรื่องก่อน: (ก) คอลัมน์ "still missing at spark" วัดที่ 150 ครั้งฝั่งเรา
+แต่ 180 ครั้งฝั่ง GenshinLike (Genshin ไม่มี spark จริง 180 คือกรณีแย่สุดจนได้ตัวชูโรงแน่นอน)
+(ข) **พูลของเราเล็กมาก** — R4 มี 2 สาย ส่วนชั้น 4★ ของ Genshin มีตัวละครกับอาวุธหลายสิบชิ้น
+เอาอัตรา 5.1% มาใส่พูล 2 สายตรง ๆ จึงได้ R4 ตัวแรกใน ~8 ครั้ง และตัวซ้ำ R4 สูงถึง 94–99%
+ซึ่ง **ไม่ใช่สิ่งที่ Genshin ให้ผู้เล่นรู้สึก** ลอกอัตรามาทั้งชุดจึงผิด
+
+สิ่งที่ตัวเลขบอกจริง ๆ และควรเอามาใช้ (**ข้อเสนอ — ยังไม่ได้แก้ `SummonRules.Proposed`
+รอเจ้าของโปรเจกต์ตัดสิน**):
+
+1. **R5 ของเราไม่มีการันตีของตัวเอง** — pity ของเราการันตี "R4 ขึ้นไป" และ R5 ได้แค่ 1 ใน 4
+   ของก้อนนั้น ผลคือเมื่อมี R5 จริง 16% ของผู้เล่นยังไม่ได้ตอนถึง spark ส่วนโครง Genshin ที่มี
+   pity แยกของชั้นบนสุด (hard 90) ทำให้เหลือ 0% **ควรเพิ่ม pity แยกของ R5** พร้อมกับสาย R5 แรก
+   และคง pity R4+ ที่ 60 ไว้
+2. **อัตราที่ผู้เล่นรู้สึกคืออัตราต่อสาย ไม่ใช่ต่อชั้น** — แผนทยอยปล่อยจะทำให้พูลโตขึ้นเรื่อย ๆ
+   และโอกาสได้สายที่อยากได้ลดลงทุกครั้งที่เพิ่มสาย Genshin แก้ด้วยตัวชูโรง (rate-up 50/50 +
+   การันตีรอบถัดไป) **เมื่อเริ่มทยอยปล่อยสาย ต้องมี banner ตัวชูโรงหนึ่งใบ** ซึ่งตรงกับที่
+   เอกสารนี้ตั้งไว้แล้ว ("Banner ใบเดียวที่มีตัวชูโรงหมุนเวียน")
+3. **Attune ขึ้นกับอัตราของชั้นมาก** — เต็มเพดาน R4 ใช้ ~3,200 ครั้งในโครงของเรา แต่ ~960 ครั้ง
+   เมื่อ R4 ออกบ่อยแบบ GenshinLike ควรพิจารณาอัตรา Echo shard ใหม่ตอนล็อกอัตรา ไม่ใช่ตอนนี้
+
 ## สิ่งที่ตั้งใจตัดออก
 
 - **ระบบสุ่มไอเทม/อุปกรณ์** — มีแค่สุ่มตัวละครอย่างเดียว เพิ่มชั้นความสุ่มที่สองทับกัน
