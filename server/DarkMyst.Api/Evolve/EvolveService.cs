@@ -8,6 +8,7 @@ using DarkMyst.Api.Content;
 using DarkMyst.Api.Data;
 using DarkMyst.Api.Data.Entities;
 using DarkMyst.Api.Ledger;
+using DarkMyst.Api.Telemetry;
 using DarkMyst.Combat.Model;
 using DarkMyst.Content;
 using Microsoft.EntityFrameworkCore;
@@ -40,12 +41,14 @@ namespace DarkMyst.Api.Evolve
         private readonly ApiDbContext _db;
         private readonly ContentPackRegistry _content;
         private readonly LedgerService _ledger;
+        private readonly TelemetryWriter _telemetry;
 
-        public EvolveService(ApiDbContext db, ContentPackRegistry content, LedgerService ledger)
+        public EvolveService(ApiDbContext db, ContentPackRegistry content, LedgerService ledger, TelemetryWriter telemetry)
         {
             _db = db;
             _content = content;
             _ledger = ledger;
+            _telemetry = telemetry;
         }
 
         public async Task<EvolvePreviewResponse> PreviewAsync(string accountId, EvolveRequest request, CancellationToken ct)
@@ -192,6 +195,17 @@ namespace DarkMyst.Api.Evolve
                 TotalBonusPerMille = preview.TotalBonusPerMille,
                 CreatedAt = DateTimeOffset.UtcNow
             });
+
+            CharacterData fromCharacter = pack.GetCharacter(fromCharacterId);
+            CharacterData toCharacter = pack.GetCharacter(subject.CharacterId);
+            int sameLineMaterialCount = fodderEntities.Count(f =>
+                TelemetryContentResolver.Resolve(_content, f.ContentVersion, f.CharacterId).LineId == fromCharacter.LineId);
+
+            _telemetry.Add(accountId, TelemetryEventTypes.EvolveCompleted, subject.ContentVersion, pack.Manifest.RulesVersion,
+                new EvolveCompletedPayload(
+                    subject.InstanceId, fromCharacterId, subject.CharacterId, fromCharacter.LineId,
+                    fromCharacter.EvolveStage, toCharacter.EvolveStage, subject.InheritedBonusPerMille,
+                    request.FodderInstanceIds.ToList(), sameLineMaterialCount));
 
             var response = new EvolvedCharacterResponse(
                 subject.InstanceId,

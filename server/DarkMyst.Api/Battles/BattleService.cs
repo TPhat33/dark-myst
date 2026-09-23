@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using DarkMyst.Api.Content;
 using DarkMyst.Api.Data;
 using DarkMyst.Api.Data.Entities;
+using DarkMyst.Api.Telemetry;
 using DarkMyst.Combat;
 using DarkMyst.Combat.Model;
 using DarkMyst.Content;
@@ -27,11 +28,13 @@ namespace DarkMyst.Api.Battles
     {
         private readonly ApiDbContext _db;
         private readonly ContentPackRegistry _content;
+        private readonly TelemetryWriter _telemetry;
 
-        public BattleService(ApiDbContext db, ContentPackRegistry content)
+        public BattleService(ApiDbContext db, ContentPackRegistry content, TelemetryWriter telemetry)
         {
             _db = db;
             _content = content;
+            _telemetry = telemetry;
         }
 
         public async Task<RunBattleResponse> RunAsync(string accountId, RunBattleRequest request, CancellationToken ct)
@@ -45,6 +48,7 @@ namespace DarkMyst.Api.Battles
 
             var byId = characters.ToDictionary(c => c.InstanceId, c => c);
             var attacker = new TeamDefinition { TeamId = accountId, LeaderSlot = request.LeaderSlot };
+            var telemetryMembers = new List<TelemetryMemberSnapshot>();
 
             foreach (BattlePlacement placement in request.Placements)
             {
@@ -62,6 +66,10 @@ namespace DarkMyst.Api.Battles
                 // team you have already committed elsewhere is the entire point of a sandbox that
                 // "ไม่จ่ายรางวัล" (docs/04-economy-spec.md).
                 attacker.Units.Add(Progression.BuildUnit(pack, character.ToModel(), placement.Slot));
+
+                TelemetryContentResolver.LineInfo line = TelemetryContentResolver.Resolve(_content, character.ContentVersion, character.CharacterId);
+                telemetryMembers.Add(new TelemetryMemberSnapshot(
+                    character.InstanceId, character.CharacterId, line.LineId, line.EvolveStage, character.Level, character.Focus.ToString()));
             }
 
             TeamDefinition defender;
@@ -98,9 +106,17 @@ namespace DarkMyst.Api.Battles
                         RequestJson = JsonSerializer.Serialize(request),
                         CreatedAt = DateTimeOffset.UtcNow
                     });
-                    await _db.SaveChangesAsync(ct);
                 }
             }
+
+            // Every server-resolved battle is telemetry, checksum mismatch or not — this is the
+            // training-ground half of the "battle_finished" event catalogue (docs/10-backend-spec.md);
+            // the expedition-node half is written by ExpeditionService.
+            _telemetry.Add(accountId, TelemetryEventTypes.BattleFinished, pack.Version, pack.Manifest.RulesVersion,
+                new BattleFinishedPayload(
+                    "battle_run", RunId: null, StageId: null, request.EncounterId, ToOutcomeString(result.Outcome),
+                    result.Rounds, telemetryMembers));
+            await _db.SaveChangesAsync(ct);
 
             return new RunBattleResponse(result, matched);
         }
@@ -112,6 +128,17 @@ namespace DarkMyst.Api.Battles
         /// this request actually used (it is echoed back on <see cref="BattleResult.Seed"/>) so a
         /// replay can still be verified byte-for-byte.
         /// </summary>
+        private static string ToOutcomeString(BattleOutcome outcome)
+        {
+            return outcome switch
+            {
+                BattleOutcome.AttackerVictory => "win",
+                BattleOutcome.DefenderVictory => "loss",
+                BattleOutcome.Draw => "draw",
+                _ => outcome.ToString()
+            };
+        }
+
         private static ulong RandomSeed()
         {
             Span<byte> bytes = stackalloc byte[8];

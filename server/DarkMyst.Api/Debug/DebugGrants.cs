@@ -5,6 +5,7 @@ using DarkMyst.Api.Content;
 using DarkMyst.Api.Data;
 using DarkMyst.Api.Data.Entities;
 using DarkMyst.Api.Ledger;
+using DarkMyst.Api.Telemetry;
 using DarkMyst.Content;
 
 namespace DarkMyst.Api.Debug
@@ -29,7 +30,7 @@ namespace DarkMyst.Api.Debug
     public static class DebugGrants
     {
         public static async Task<OwnedCharacterEntity> GrantCharacterAsync(
-            ApiDbContext db, ContentPackRegistry content, LedgerService ledger,
+            ApiDbContext db, ContentPackRegistry content, LedgerService ledger, TelemetryWriter telemetry,
             string accountId, GrantCharacterRequest request, string idempotencyKey, CancellationToken ct)
         {
             ContentPack pack = content.Latest;
@@ -55,6 +56,10 @@ namespace DarkMyst.Api.Debug
 
             db.Characters.Add(entity);
             ledger.RecordCharacterMovement(accountId, entity.InstanceId, +1, "debug:grant-character", idempotencyKey);
+            telemetry.Add(accountId, TelemetryEventTypes.CharacterObtained, pack.Version, pack.Manifest.RulesVersion,
+                new CharacterObtainedPayload(
+                    entity.InstanceId, character.Id, character.LineId, character.Rarity, character.EvolveStage,
+                    CharacterObtainedSource.Debug, RunId: null, StageId: null));
             await db.SaveChangesAsync(ct);
             return entity;
         }

@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using DarkMyst.Api.Content;
 using DarkMyst.Api.Data;
 using DarkMyst.Api.Data.Entities;
+using DarkMyst.Api.Telemetry;
 using Microsoft.EntityFrameworkCore;
 
 namespace DarkMyst.Api.Teams
@@ -31,10 +33,14 @@ namespace DarkMyst.Api.Teams
     public sealed class TeamService
     {
         private readonly ApiDbContext _db;
+        private readonly ContentPackRegistry _content;
+        private readonly TelemetryWriter _telemetry;
 
-        public TeamService(ApiDbContext db)
+        public TeamService(ApiDbContext db, ContentPackRegistry content, TelemetryWriter telemetry)
         {
             _db = db;
+            _content = content;
+            _telemetry = telemetry;
         }
 
         public async Task<SavedTeamResponse> CreateAsync(string accountId, SaveTeamRequest request, CancellationToken ct)
@@ -73,13 +79,21 @@ namespace DarkMyst.Api.Teams
                 UpdatedAt = DateTimeOffset.UtcNow
             };
 
+            var telemetryMembers = new List<TelemetryMemberSnapshot>();
             foreach (TeamPlacement placement in request.Placements)
             {
                 team.Members.Add(new SavedTeamMemberEntity { TeamId = team.Id, Slot = placement.Slot, InstanceId = placement.InstanceId });
-                byId[placement.InstanceId].IsInUse = true;
+                OwnedCharacterEntity character = byId[placement.InstanceId];
+                character.IsInUse = true;
+
+                TelemetryContentResolver.LineInfo line = TelemetryContentResolver.Resolve(_content, character.ContentVersion, character.CharacterId);
+                telemetryMembers.Add(new TelemetryMemberSnapshot(
+                    character.InstanceId, character.CharacterId, line.LineId, line.EvolveStage, character.Level, character.Focus.ToString()));
             }
 
             _db.SavedTeams.Add(team);
+            _telemetry.Add(accountId, TelemetryEventTypes.TeamSaved, _content.LatestVersion, _content.Latest.Manifest.RulesVersion,
+                new TeamSavedPayload(team.Id, telemetryMembers));
             await _db.SaveChangesAsync(ct);
 
             return ToResponse(team);

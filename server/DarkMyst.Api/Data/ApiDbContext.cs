@@ -42,6 +42,8 @@ namespace DarkMyst.Api.Data
 
         public DbSet<ContentPublishEntity> ContentPublishes => Set<ContentPublishEntity>();
 
+        public DbSet<TelemetryEventEntity> TelemetryEvents => Set<TelemetryEventEntity>();
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<AccountEntity>(b =>
@@ -163,6 +165,22 @@ namespace DarkMyst.Api.Data
                 b.Property(x => x.Id).UseIdentityAlwaysColumn();
                 b.Property(x => x.Kind).HasConversion<string>();
                 b.HasIndex(x => x.CreatedAt);
+            });
+
+            modelBuilder.Entity<TelemetryEventEntity>(b =>
+            {
+                b.ToTable("telemetry_events");
+                b.HasKey(x => x.Id);
+                b.Property(x => x.Id).UseIdentityAlwaysColumn();
+                b.Property(x => x.PayloadJson).HasColumnName("payload").HasColumnType("jsonb");
+                // docs/08-metrics.md: raw export by type/time range, and per-account cascade
+                // delete — both read paths this index (and the FK below) exist for.
+                b.HasIndex(x => new { x.Type, x.OccurredAt });
+                b.HasIndex(x => new { x.AccountId, x.OccurredAt });
+                // ON DELETE CASCADE: deleting an account (not implemented yet, but the store
+                // requirement docs/08-metrics.md principle 4 names) must take every event about it
+                // with it, with no separate cleanup step to remember.
+                b.HasOne<AccountEntity>().WithMany().HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Cascade);
             });
         }
     }

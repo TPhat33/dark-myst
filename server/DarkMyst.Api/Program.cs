@@ -18,6 +18,7 @@ using DarkMyst.Api.Health;
 using DarkMyst.Api.Idempotency;
 using DarkMyst.Api.Ledger;
 using DarkMyst.Api.Teams;
+using DarkMyst.Api.Telemetry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
@@ -67,6 +68,8 @@ builder.Services.AddScoped<BattleService>();
 builder.Services.AddScoped<AdminAccountService>();
 builder.Services.AddScoped<AdminContentService>();
 builder.Services.AddScoped<AdminSweepService>();
+builder.Services.AddScoped<TelemetryWriter>();
+builder.Services.AddScoped<AdminTelemetryService>();
 
 // The admin tool (admin/, a Vite dev server or a static build) is served from a different origin
 // than this API, so a browser calling /admin/* needs CORS allowed explicitly — nothing else in
@@ -413,6 +416,28 @@ app.MapPost("/admin/content/sweep", async (HttpContext http, ApiDbContext db, Ad
 });
 
 // ---------------------------------------------------------------------------
+// Admin — telemetry read side (docs/10-backend-spec.md's telemetry section). Same AdminAuth gate
+// as every other /admin/* route above, structurally separate from the player bearer token; no
+// endpoint here ever writes a telemetry_events row, only TelemetryWriter (via the gameplay
+// services) does that.
+// ---------------------------------------------------------------------------
+
+app.MapGet("/admin/telemetry/events", async (HttpContext http, ApiDbContext db, AdminTelemetryService telemetryAdmin,
+    CancellationToken ct, string type = null, DateTimeOffset? since = null, DateTimeOffset? until = null,
+    int? limit = null, long? after = null) =>
+{
+    await AdminAuth.RequireAdminAsync(http, db, ct);
+    return Results.Ok(await telemetryAdmin.ListEventsAsync(type, since, until, limit, after, ct));
+});
+
+app.MapGet("/admin/telemetry/lines", async (HttpContext http, ApiDbContext db, AdminTelemetryService telemetryAdmin,
+    CancellationToken ct, string contentVersion = null) =>
+{
+    await AdminAuth.RequireAdminAsync(http, db, ct);
+    return Results.Ok(await telemetryAdmin.GetLineReportAsync(contentVersion, ct));
+});
+
+// ---------------------------------------------------------------------------
 // Debug-only grants — stand in for the shop/gacha system docs/00-overview.md defers to phase E.
 // Gated off outside Development so this never ships as a real endpoint.
 // ---------------------------------------------------------------------------
@@ -420,7 +445,7 @@ app.MapPost("/admin/content/sweep", async (HttpContext http, ApiDbContext db, Ad
 if (app.Environment.IsDevelopment() || builder.Configuration.GetValue<bool>("Debug:AllowGrants"))
 {
     app.MapPost("/debug/grant-character", async (HttpContext http, ApiDbContext db, LedgerService ledger,
-        ContentPackRegistry content, IdempotencyService idempotency, CancellationToken ct) =>
+        ContentPackRegistry content, TelemetryWriter telemetry, IdempotencyService idempotency, CancellationToken ct) =>
     {
         AccountEntity account = await AccountAuth.RequireAccountAsync(http, db, ct);
         (GrantCharacterRequest request, string raw) = await ApiIo.ReadBodyAsync<GrantCharacterRequest>(http.Request, jsonOptions, ct);
@@ -428,7 +453,7 @@ if (app.Environment.IsDevelopment() || builder.Configuration.GetValue<bool>("Deb
 
         IdempotencyOutcome outcome = await idempotency.ExecuteAsync(account.Id, "debug/grant-character", key, raw, async () =>
         {
-            OwnedCharacterEntity granted = await DebugGrants.GrantCharacterAsync(db, content, ledger, account.Id, request, key, ct);
+            OwnedCharacterEntity granted = await DebugGrants.GrantCharacterAsync(db, content, ledger, telemetry, account.Id, request, key, ct);
             return new IdempotentOperationResult(200, granted.ToModel());
         }, ct);
 

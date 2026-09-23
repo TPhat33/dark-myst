@@ -8,6 +8,8 @@ using DarkMyst.Api.Content;
 using DarkMyst.Api.Data;
 using DarkMyst.Api.Data.Entities;
 using DarkMyst.Api.Ledger;
+using DarkMyst.Api.Telemetry;
+using DarkMyst.Combat.Model;
 using DarkMyst.Content;
 using DarkMyst.Expedition;
 using DarkMyst.Expedition.Model;
@@ -43,12 +45,14 @@ namespace DarkMyst.Api.Expeditions
         private readonly ApiDbContext _db;
         private readonly ContentPackRegistry _content;
         private readonly LedgerService _ledger;
+        private readonly TelemetryWriter _telemetry;
 
-        public ExpeditionService(ApiDbContext db, ContentPackRegistry content, LedgerService ledger)
+        public ExpeditionService(ApiDbContext db, ContentPackRegistry content, LedgerService ledger, TelemetryWriter telemetry)
         {
             _db = db;
             _content = content;
             _ledger = ledger;
+            _telemetry = telemetry;
         }
 
         public async Task<ExpeditionRunSummary> StartAsync(
@@ -123,6 +127,22 @@ namespace DarkMyst.Api.Expeditions
             }
 
             _db.ExpeditionRuns.Add(entity);
+
+            // "Picked into a team, per stage" — the popularity half of docs/12-summon-spec.md's
+            // popularity x strength matrix. One event per Start, not per placement: the pick-rate
+            // question is "did a run on this stage include line X", not "how many slots did it fill".
+            var startedMembers = new List<TelemetryMemberSnapshot>();
+            foreach (KeyValuePair<int, OwnedCharacter> placement in placements)
+            {
+                TelemetryContentResolver.LineInfo line = TelemetryContentResolver.Resolve(_content, pack.Version, placement.Value.CharacterId);
+                startedMembers.Add(new TelemetryMemberSnapshot(
+                    placement.Value.InstanceId, placement.Value.CharacterId, line.LineId, line.EvolveStage,
+                    placement.Value.Level, placement.Value.Focus.ToString()));
+            }
+
+            _telemetry.Add(accountId, TelemetryEventTypes.ExpeditionStarted, pack.Version, pack.Manifest.RulesVersion,
+                new ExpeditionStartedPayload(entity.Id, request.StageId, startedMembers));
+
             await _db.SaveChangesAsync(ct);
 
             return ToSummary(entity, run);
@@ -158,9 +178,25 @@ namespace DarkMyst.Api.Expeditions
                 throw new ExpeditionRefusedException(ex.Message);
             }
 
+            if (outcome.BattleResult != null)
+            {
+                var battleMembers = new List<TelemetryMemberSnapshot>();
+                foreach (RunTeamMemberState member in clone.State.Team)
+                {
+                    TelemetryContentResolver.LineInfo line = TelemetryContentResolver.Resolve(_content, pack.Version, member.CharacterId);
+                    battleMembers.Add(new TelemetryMemberSnapshot(
+                        member.InstanceId, member.CharacterId, line.LineId, line.EvolveStage, member.Level, member.Focus.ToString()));
+                }
+
+                _telemetry.Add(accountId, TelemetryEventTypes.BattleFinished, pack.Version, pack.Manifest.RulesVersion,
+                    new BattleFinishedPayload(
+                        "expedition", entity.Id, entity.StageId, outcome.RefId, ToOutcomeString(outcome.BattleResult.Outcome),
+                        outcome.BattleResult.Rounds, battleMembers));
+            }
+
             if (outcome.RunEnded)
             {
-                await SettleAsync(accountId, clone.State, "expedition:run-cleared-or-failed", ct);
+                await SettleAsync(accountId, clone.State, "expedition:run-cleared-or-failed", runId, entity.StageId, ct);
             }
 
             entity.Status = clone.State.Status.ToString();
@@ -197,7 +233,7 @@ namespace DarkMyst.Api.Expeditions
             // with whatever has been banked so far, the same way finishing the stage would be —
             // not as forfeiting it. Only an actual battle loss can zero the banked totals
             // (StageData.KeepRewardsOnDefeat, applied by the library itself), never quitting.
-            await SettleAsync(accountId, run.State, "expedition:abandoned", ct);
+            await SettleAsync(accountId, run.State, "expedition:abandoned", runId, entity.StageId, ct);
 
             entity.Lifecycle = RunLifecycle.Abandoned;
             entity.UpdatedAt = DateTimeOffset.UtcNow;
@@ -226,7 +262,8 @@ namespace DarkMyst.Api.Expeditions
         /// <summary>Grants everything banked in <paramref name="state"/> to the account and
         /// releases every placed character's in-use flag (unless a saved team still holds it) —
         /// the one place a run's rewards ever reach a player's persistent inventory.</summary>
-        private async Task SettleAsync(string accountId, ExpeditionRunState state, string reason, CancellationToken ct)
+        private async Task SettleAsync(
+            string accountId, ExpeditionRunState state, string reason, string runId, string stageId, CancellationToken ct)
         {
             AccountEntity account = await _db.Accounts.FirstAsync(a => a.Id == accountId, ct);
             _ledger.ApplyGold(account, state.BankedGold, reason, idempotencyKey: null);
@@ -253,6 +290,12 @@ namespace DarkMyst.Api.Expeditions
                 };
                 _db.Characters.Add(granted);
                 _ledger.RecordCharacterMovement(accountId, granted.InstanceId, +1, reason, idempotencyKey: null);
+
+                TelemetryContentResolver.LineInfo line = TelemetryContentResolver.Resolve(_content, state.ContentVersion, characterId);
+                _telemetry.Add(accountId, TelemetryEventTypes.CharacterObtained, state.ContentVersion, state.RulesVersion,
+                    new CharacterObtainedPayload(
+                        granted.InstanceId, characterId, line.LineId, line.Rarity, line.EvolveStage,
+                        CharacterObtainedSource.Expedition, runId, stageId));
             }
 
             var placedInstanceIds = state.Team.Select(m => m.InstanceId).ToList();
@@ -292,6 +335,21 @@ namespace DarkMyst.Api.Expeditions
             }
 
             return entity;
+        }
+
+        /// <summary>Reports exactly what the engine decided, unlike the attacker-perspective "a
+        /// draw is a loss" rule <see cref="ResolveBattle"/>-equivalent logic (in
+        /// <c>DarkMyst.Expedition</c>, not touched here) applies to run progression — telemetry
+        /// should never quietly collapse a draw into a loss when analysing balance.</summary>
+        private static string ToOutcomeString(BattleOutcome outcome)
+        {
+            return outcome switch
+            {
+                BattleOutcome.AttackerVictory => "win",
+                BattleOutcome.DefenderVictory => "loss",
+                BattleOutcome.Draw => "draw",
+                _ => outcome.ToString()
+            };
         }
 
         private static ulong RandomSeed()
