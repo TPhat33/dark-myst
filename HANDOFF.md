@@ -53,26 +53,20 @@ Two rounds since the expedition work:
 **Nothing.** No subagents are running, no work is half-applied, nothing is uncommitted.
 A fresh session starts clean.
 
-## Open decisions for the user
+## Decisions the user made on 2026-09-23
 
-These are raised and unanswered. None of them should be decided unilaterally.
+1. **Sell pulls** — docs/04 rule amended to "gems buy chance and time, never guaranteed
+   advantage" (conditions in docs/04 and docs/12). Revenue reason, the user's call.
+2. **R5 comes later** — the row stays as a placeholder; R5 rolls fold into R4.
+3. **Reference Genshin/Ragnarok** — done as a measured comparison
+   (`simrunner summon --compare`, `--rules genshin-like`), not a copy. docs/12 §"เทียบกับโครงแบบ
+   Genshin" lists three proposals that are **not yet applied**: separate R5 pity when R5 lands,
+   a featured banner once staged release starts, revisit Echo shard rates at rate-lock.
+   Asked the user whether to apply proposal 1 now; unanswered.
+4. **Telemetry approved and built** — `telemetry_events` + admin `/admin/telemetry/{events,lines}`
+   (docs/10). Win rate counts expedition battles only (the /battle/run sandbox is unlimited).
 
-1. **Selling pulls vs. `docs/04`'s own rule** (`docs/12` §"ข้อขัดแย้งกับ 04-economy-spec.md").
-   `docs/04` says gems buy *time and convenience, never stats*. Selling pulls sells a
-   chance at power, which breaks that. Two options, written out in `docs/12`: amend the
-   rule to *"gems buy chance and time, never guaranteed advantage"*, or make summoning
-   free-currency-only and sell only farm-time reducers (honest, but a very thin revenue
-   model). **This is a business decision, not a technical one** — deliberately not
-   decided. Rates cannot be locked until it is.
-2. **No pullable R5 exists.** The rate table in `docs/12` has an R5 row, but in content
-   0.4.0 rarity 5 exists only as the stage-III Ashen Revenant Lord. Either author the
-   first R5 line or drop the row.
-3. **Staged character release conflicts with the current roster.** `docs/12` plans
-   ~10 lines at launch and 1 more every 3 weeks — but all 14 are already open, so lines
-   must be held back *before* launch. Which 4 to hold is undecided.
-4. The user approved items 1 and 2 of the summon plan ("เริ่ม ข้อ 1 กับ 2 ได้เลย"); both
-   have landed. Items 3+ (`simrunner summon`, character telemetry) have not been started
-   and have not been explicitly approved.
+Still open: which ~4 lines to hold back for staged release (docs/12 §"แผนปล่อยตัวละคร").
 
 ## Design intent, in the user's own words
 
@@ -137,15 +131,7 @@ batching** — two agents have already been cut off mid-stream by Sonnet rate li
 
 ## Next step
 
-`simrunner summon` has landed (`9a77c9b`, `3f46ce6`, `ed51ba6`, plus a review fix: each
-player now gets its own PCG stream instead of seed `S + playerIndex`, which made runs with
-seed S and S+1 share all but one player). `dotnet test` is **192 green** (Sim 23, was 6).
-Measured numbers live in `docs/12` §"วิธีวัด" — re-run the command rather than copying them.
-
-What the numbers already say, for the open decisions above: with no R5 in content the R5 roll
-folds into R4 (first R4+ ≈ 21 pulls mean, never past 59). Adding one hypothetical R5 line pushes
-first-R5 to ≈ 78 mean with ~16% of players still without it at spark, and a single line hits the
-300‰ Attune cap only after ~2,400–3,200 pulls for R4/R5 — Attune as specced is a very long tail.
-
-Still not started and not approved: character telemetry (summon plan item 4). The three open
-decisions above remain the user's.
+State at hand-off: `dotnet test` **221 green** (Combat 55, Content 51, Expedition 20, Sim 32,
+Api 63), verified by re-running, plus a curl smoke test of telemetry against a live API.
+Next useful work, none approved yet: the summon server endpoint (pity/spark server-side,
+emits `summon_pulled` per docs/10), or applying the Genshin-derived proposals.
