@@ -233,26 +233,26 @@ EMPTY TIER WARNING:
 Guarantee check: worst observed gap without R4+ was 59 pull(s) (hard pity bounds it at 60); without R3+ was 9 pull(s) (floor bounds it at 10).
 
 Pulls to first milestone (mean, median, p90, worst; over players who reached it):
-  R4+         mean   21.1  median   18  p90   45  worst   59  never 0/10000
-  R4 exactly  mean   21.1  median   18  p90   45  worst   59  never 0/10000
+  R4+         mean   21.2  median   17  p90   45  worst   58  never 0/10000
+  R4 exactly  mean   21.2  median   17  p90   45  worst   58  never 0/10000
   R5          no player reached this within budget (0/10000)
 
 Pulls to first copy, per R4/R5 line (mean, median, p90, worst, never, share still missing at spark):
   R4 chr_shackleborn_i
-    mean   42.3  median   35  p90   91  worst  298  never 2/10000    still missing at spark: 1.8%
+    mean   42.5  median   35  p90   91  worst  292  never 3/10000    still missing at spark: 1.9%
   R4 chr_tide_oracle_i
-    mean   42.4  median   35  p90   90  worst  291  never 5/10000    still missing at spark: 2.1%
+    mean   42.3  median   35  p90   91  worst  300  never 5/10000    still missing at spark: 1.9%
 
 Duplicate rate by tier (pulls, duplicates, rate):
-  R4  pulls   139517  duplicates   119524  85.6%
-  R3  pulls  1078670  duplicates   978670  90.7%
-  R2  pulls  1781813  duplicates  1761813  98.8%
+  R4  pulls   139274  duplicates   119282  85.6%
+  R3  pulls  1078598  duplicates   978599  90.7%
+  R2  pulls  1782128  duplicates  1762128  98.8%
 
 Pulls until a line reaches the Attune cap (budget 5000 pulls):
-  any tier  mean  782.4  median  784  p90  821  worst  890  never 0/10000
-  R2        mean  782.4  median  784  p90  821  worst  890  never 0/10000
-  R3        mean 2912.6  median 2922  p90 3098  worst 3369  never 0/10000
-  R4        mean 2398.2  median 2401  p90 2664  worst 3180  never 0/10000
+  any tier  mean  782.9  median  784  p90  821  worst  880  never 0/10000
+  R2        mean  782.9  median  784  p90  821  worst  880  never 0/10000
+  R3        mean 2910.0  median 2921  p90 3097  worst 3501  never 0/10000
+  R4        mean 2400.9  median 2406  p90 2669  worst 3175  never 0/10000
 ```
 
 ทุกตัวเลขข้างบนเป็นของสาย **จริง** (R5 ยังว่าง จึงพับลงมาเป็น R4 ตามที่เตือนไว้บนสุด) ด้วย seed
@@ -264,20 +264,20 @@ $ dotnet run --project tools/DarkMyst.SimRunner -- summon --seed 20260920 --hypo
 SYNTHETIC : 1 hypothetical R5 line(s) added to the pool (--hypothetical-r5) — every R5 number below is measured against a line that does not exist in content yet.
 
 Pulls to first milestone (mean, median, p90, worst; over players who reached it):
-  R4+         mean   21.1  median   18  p90   45  worst   59  never 0/10000
-  R4 exactly  mean   28.3  median   23  p90   54  worst  192  never 0/10000
-  R5          mean   77.0  median   58  p90  171  worst  300  never 237/10000
+  R4+         mean   21.2  median   17  p90   45  worst   58  never 0/10000
+  R4 exactly  mean   28.1  median   23  p90   54  worst  208  never 0/10000
+  R5          mean   77.6  median   59  p90  175  worst  300  never 247/10000
 
 Pulls to first copy, per R4/R5 line (mean, median, p90, worst, never, share still missing at spark):
   R5 hypothetical-r5-1 (hypothetical)
-    mean   77.0  median   58  p90  171  worst  300  never 237/10000    still missing at spark: 15.8%
+    mean   77.6  median   59  p90  175  worst  300  never 247/10000    still missing at spark: 16.2%
   R4 chr_shackleborn_i
-    mean   55.7  median   44  p90  123  worst  299  never 28/10000    still missing at spark: 5.7%
+    mean   55.9  median   44  p90  123  worst  299  never 28/10000    still missing at spark: 6.0%
   R4 chr_tide_oracle_i
-    mean   55.9  median   44  p90  122  worst  299  never 32/10000    still missing at spark: 6.1%
+    mean   55.6  median   44  p90  124  worst  300  never 26/10000    still missing at spark: 5.9%
 ```
 
-สังเกตว่า R4 ก็ขยับช้าลงเมื่อเปิด R5 สมมติ (mean 21.1→28.3 ครั้งกว่าจะได้ "R4 พอดี") เพราะส่วนแบ่ง
+สังเกตว่า R4 ก็ขยับช้าลงเมื่อเปิด R5 สมมติ (mean 21.2→28.1 ครั้งกว่าจะได้ "R4 พอดี") เพราะส่วนแบ่ง
 R4+ ก้อนเดิมถูกแบ่งจริงระหว่าง R5 กับ R4 แทนที่จะพับมารวมที่ R4 ทั้งหมด — เป็นผลข้างเคียงที่คาดไว้
 ของการพับชั้นว่าง ไม่ใช่บั๊ก
 

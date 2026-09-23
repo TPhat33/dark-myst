@@ -137,11 +137,15 @@ batching** — two agents have already been cut off mid-stream by Sonnet rate li
 
 ## Next step
 
-Build **`simrunner summon`**, specified in `docs/12` §"วิธีวัด": simulate N players and
-report the distribution of pulls-to-first-R4 and to-first-R5 (mean, median, p90, worst),
-the share of players reaching spark, duplicate rate per line, and pulls needed to Attune
-one line to the 300‰ cap. `docs/12` states plainly that none of its numbers may be locked
-until this exists — every number in this project is reproducible by a command or it is not
-claimed. It is also independent of open decision 1, so it can proceed while that is unsettled.
+`simrunner summon` has landed (`9a77c9b`, `3f46ce6`, `ed51ba6`, plus a review fix: each
+player now gets its own PCG stream instead of seed `S + playerIndex`, which made runs with
+seed S and S+1 share all but one player). `dotnet test` is **192 green** (Sim 23, was 6).
+Measured numbers live in `docs/12` §"วิธีวัด" — re-run the command rather than copying them.
 
-Ask the user before starting: the summon plan's items 3+ have not been approved yet.
+What the numbers already say, for the open decisions above: with no R5 in content the R5 roll
+folds into R4 (first R4+ ≈ 21 pulls mean, never past 59). Adding one hypothetical R5 line pushes
+first-R5 to ≈ 78 mean with ~16% of players still without it at spark, and a single line hits the
+300‰ Attune cap only after ~2,400–3,200 pulls for R4/R5 — Attune as specced is a very long tail.
+
+Still not started and not approved: character telemetry (summon plan item 4). The three open
+decisions above remain the user's.

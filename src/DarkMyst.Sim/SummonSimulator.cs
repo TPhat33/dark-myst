@@ -157,6 +157,8 @@ namespace DarkMyst.Sim
     /// </summary>
     public static class SummonSimulator
     {
+        private const ulong PlayerStreamBase = 0x5_0000_0000UL;
+
         public static SummonReport Run(ContentPack pack, SummonRequest request)
         {
             if (pack == null)
@@ -231,7 +233,10 @@ namespace DarkMyst.Sim
 
             for (int player = 0; player < request.Players; player++)
             {
-                var rng = new DeterministicRandom(request.Seed + (ulong)player);
+                // One seed, one PCG stream per player. Deriving the seed as Seed + player would
+                // make run S and run S+1 share all but one player, so two "independent" seeds
+                // would agree almost exactly and hide real variance.
+                var rng = new DeterministicRandom(request.Seed, PlayerStreamBase + (ulong)player);
 
                 int pullsSinceLastR4Plus = 0;
                 int pullsSinceLastR3Plus = 0;
