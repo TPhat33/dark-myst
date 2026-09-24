@@ -267,58 +267,33 @@ namespace DarkMyst.Sim
 
                 for (int i = 1; i <= maxPullsPerPlayer; i++)
                 {
-                    // Pity check first (docs/12 §"การันตีสามชั้น"): roll for PityTier-or-better at
-                    // this pull's (possibly soft/hard-boosted) chance. If it fires, pick among the
-                    // tiers PityTier..5 by base-rate proportion; if not, pick among the remaining
-                    // tiers 2..PityTier-1 by base-rate proportion. The floor then only ever
-                    // upgrades a result that pity did not already lift to PityTier+.
-                    int k = pullsSincePity + 1;
-                    int pityBp = rules.ComputePityChanceBasisPoints(k);
-                    int roll1 = rng.NextInt(0, 10000);
+                    // Single shared implementation of "resolve one pull" (docs/12 §"การันตีสามชั้น",
+                    // §"โครงชั้นความหายาก") — see SummonEngine.cs. Consumes RNG words in exactly the
+                    // same order this loop always has, so the stream is unchanged by this
+                    // extraction (locked by the byte-identical-output test in
+                    // tests/DarkMyst.Sim.Tests).
+                    SummonPullOutcome outcome = SummonEngine.ResolvePull(rules, poolByTier, pullsSincePity, pullsSinceFloor, rng);
+                    CharacterData picked = outcome.Character;
+                    int actualTier = outcome.ActualTier;
 
-                    int rolledTier = roll1 < pityBp
-                        ? PickWeightedTier(rules, rules.PityTier, 5, rng)
-                        : PickWeightedTier(rules, 2, rules.PityTier - 1, rng);
-
-                    if (rolledTier < rules.FloorTier && pullsSinceFloor >= rules.FloorWindowPulls)
-                    {
-                        rolledTier = PickWeightedTier(rules, rules.FloorTier, rules.PityTier - 1, rng);
-                    }
-
-                    CharacterData picked = PickFromPool(poolByTier, rolledTier, rng);
-                    int actualTier = picked.Rarity;
-
-                    // Pity reacts to what the player actually received, not the die roll that may
-                    // have been folded down to a lower, non-empty tier (docs/12
+                    // Pity/floor react to what the player actually received, not the die roll that
+                    // may have been folded down to a lower, non-empty tier (docs/12
                     // §"โครงชั้นความหายาก"). In content 0.4.0 only R5 is ever empty and it always
                     // folds to R4, so this never actually demotes a roll below PityTier+ for
                     // Proposed; written this way so a future empty tier would not silently break
                     // the guarantee for any rule set.
-                    if (actualTier >= rules.PityTier)
+                    if (outcome.PullsSincePityAfter > pullsSincePity && outcome.PullsSincePityAfter > maxGapPity)
                     {
-                        pullsSincePity = 0;
-                    }
-                    else
-                    {
-                        pullsSincePity++;
-                        if (pullsSincePity > maxGapPity)
-                        {
-                            maxGapPity = pullsSincePity;
-                        }
+                        maxGapPity = outcome.PullsSincePityAfter;
                     }
 
-                    if (actualTier >= rules.FloorTier)
+                    if (outcome.PullsSinceFloorAfter > pullsSinceFloor && outcome.PullsSinceFloorAfter > maxGapFloor)
                     {
-                        pullsSinceFloor = 0;
+                        maxGapFloor = outcome.PullsSinceFloorAfter;
                     }
-                    else
-                    {
-                        pullsSinceFloor++;
-                        if (pullsSinceFloor > maxGapFloor)
-                        {
-                            maxGapFloor = pullsSinceFloor;
-                        }
-                    }
+
+                    pullsSincePity = outcome.PullsSincePityAfter;
+                    pullsSinceFloor = outcome.PullsSinceFloorAfter;
 
                     bool withinMainBudget = i <= request.Pulls;
                     bool withinAttuneBudget = i <= request.AttuneMaxPulls;
@@ -592,58 +567,6 @@ namespace DarkMyst.Sim
             }
 
             throw new InvalidOperationException("Line '" + lineId + "' was pulled but is not in any tier's pool.");
-        }
-
-        /// <summary>
-        /// Picks a tier in [<paramref name="lowTierInclusive"/>..<paramref name="highTierInclusive"/>]
-        /// weighted by base rate, checked highest tier first (so within a pity-fires roll R5 is
-        /// checked before R4, matching how a player reads "the pity roll landed on the top slice
-        /// first"). A single-tier range needs no roll at all and returns that tier without
-        /// consuming any RNG word — this is what keeps <see cref="SummonRules.Proposed"/>'s RNG
-        /// stream byte-identical to before this method existed: its own floor upgrade
-        /// (FloorTier 3 .. PityTier-1 3) is always exactly one tier.
-        /// </summary>
-        private static int PickWeightedTier(SummonRules rules, int lowTierInclusive, int highTierInclusive, DeterministicRandom rng)
-        {
-            if (lowTierInclusive >= highTierInclusive)
-            {
-                return lowTierInclusive;
-            }
-
-            int total = rules.SumRates(lowTierInclusive, highTierInclusive);
-            int roll = rng.NextInt(0, total);
-            int cumulative = 0;
-            for (int tier = highTierInclusive; tier >= lowTierInclusive; tier--)
-            {
-                cumulative += rules.RateBasisPoints(tier);
-                if (roll < cumulative)
-                {
-                    return tier;
-                }
-            }
-
-            return lowTierInclusive;
-        }
-
-        /// <summary>Resolves a rolled tier to an actual pullable character, folding down through
-        /// lower tiers when the rolled one has no pullable stage-I line (docs/12
-        /// §"โครงชั้นความหายาก"). Always draws exactly one RNG word to pick within the resolved
-        /// tier, even for a single-candidate tier — see <see cref="DeterministicRandom.NextInt"/>'s
-        /// own note on why that word is never skipped.</summary>
-        private static CharacterData PickFromPool(Dictionary<int, List<CharacterData>> poolByTier, int rolledTier, DeterministicRandom rng)
-        {
-            for (int tier = rolledTier; tier >= 2; tier--)
-            {
-                List<CharacterData> pool = poolByTier[tier];
-                if (pool.Count > 0)
-                {
-                    int index = rng.NextInt(0, pool.Count);
-                    return pool[index];
-                }
-            }
-
-            throw new InvalidOperationException(
-                "No pullable stage-I line exists at or below rolled tier R" + rolledTier + ".");
         }
 
         private static PullCountStat Summarize(List<int> values, int totalPlayers)

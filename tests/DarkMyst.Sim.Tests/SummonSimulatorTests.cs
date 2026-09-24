@@ -411,6 +411,49 @@ namespace DarkMyst.Sim.Tests
 
         // ------------------------------------------------------------------
 
+        /// <summary>
+        /// Byte-for-byte lock on <see cref="SummonRules.Proposed"/>'s output at a fixed seed,
+        /// captured right after <c>SummonSimulator</c> was refactored to delegate its per-pull
+        /// resolution to <see cref="SummonEngine.ResolvePull"/> (docs/06-roadmap.md phase E summon
+        /// endpoint work) — confirmed identical to the pre-refactor numbers via a manual
+        /// before/after `simrunner summon` diff at the time of that change. If this test ever
+        /// fails, either the RNG stream order changed or a rate value did — both are things this
+        /// test exists to catch before they ship silently.
+        /// </summary>
+        [Fact]
+        public void Run_output_for_Proposed_is_locked_at_a_fixed_seed()
+        {
+            SummonReport report = SummonSimulator.Run(Pack.Value, new SummonRequest
+            {
+                Players = 200,
+                Pulls = 100,
+                AttuneMaxPulls = 100,
+                Seed = 999,
+                Rules = SummonRules.Proposed
+            });
+
+            Assert.Equal(200, report.FirstR4Plus.ReachedCount);
+            Assert.Equal(224, report.FirstR4Plus.MeanTimes10);
+            Assert.Equal(20, report.FirstR4Plus.Median);
+            Assert.Equal(45, report.FirstR4Plus.P90);
+            Assert.Equal(59, report.FirstR4Plus.Worst);
+            Assert.Equal(58, report.MaxObservedPullsWithoutPityTier);
+            Assert.Equal(9, report.MaxObservedPullsWithoutFloorTier);
+
+            var tierByRarity = new Dictionary<int, TierDuplicateStat>();
+            foreach (TierDuplicateStat tier in report.DuplicatesPerTier)
+            {
+                tierByRarity[tier.Rarity] = tier;
+            }
+
+            Assert.Equal(855, tierByRarity[4].TotalPulls);
+            Assert.Equal(480, tierByRarity[4].Duplicates);
+            Assert.Equal(7261, tierByRarity[3].TotalPulls);
+            Assert.Equal(5313, tierByRarity[3].Duplicates);
+            Assert.Equal(11884, tierByRarity[2].TotalPulls);
+            Assert.Equal(11484, tierByRarity[2].Duplicates);
+        }
+
         private static string FindRepositoryRoot()
         {
             string dir = AppContext.BaseDirectory;
