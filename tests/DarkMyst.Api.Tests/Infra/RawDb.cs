@@ -169,6 +169,50 @@ namespace DarkMyst.Api.Tests.Infra
             await cmd.ExecuteNonQueryAsync();
         }
 
+        /// <summary>Plants (or overwrites) a <c>summon_state</c> row directly — the only practical
+        /// way a test reaches Spark-threshold Spark points without actually issuing 150 real
+        /// pulls. Pity/floor counters are left at 0 since no summon test needs to plant those.</summary>
+        public static async Task SetSparkPointsAsync(string connectionString, string accountId, int sparkPoints)
+        {
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync();
+            await using var cmd = new NpgsqlCommand(
+                @"INSERT INTO summon_state (account_id, pulls_since_last_pity, pulls_since_last_floor, spark_points, updated_at)
+                  VALUES (@id, 0, 0, @spark, now())
+                  ON CONFLICT (account_id) DO UPDATE SET spark_points = @spark, updated_at = now()",
+                connection);
+            cmd.Parameters.AddWithValue("id", accountId);
+            cmd.Parameters.AddWithValue("spark", sparkPoints);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        /// <summary>Plants (or overwrites) an <c>echo_shards</c> balance directly — lets an Attune
+        /// test start from a specific shard count without pulling/redeeming enough duplicates to
+        /// earn it for real.</summary>
+        public static async Task SetShardCountAsync(string connectionString, string accountId, string lineId, int shardCount)
+        {
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync();
+            await using var cmd = new NpgsqlCommand(
+                @"INSERT INTO echo_shards (account_id, line_id, shard_count)
+                  VALUES (@id, @line, @count)
+                  ON CONFLICT (account_id, line_id) DO UPDATE SET shard_count = @count",
+                connection);
+            cmd.Parameters.AddWithValue("id", accountId);
+            cmd.Parameters.AddWithValue("line", lineId);
+            cmd.Parameters.AddWithValue("count", shardCount);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        public static async Task<int> GetGemsAsync(string connectionString, string accountId)
+        {
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync();
+            await using var cmd = new NpgsqlCommand("SELECT gems FROM accounts WHERE id = @id", connection);
+            cmd.Parameters.AddWithValue("id", accountId);
+            return (int)await cmd.ExecuteScalarAsync();
+        }
+
         /// <summary>Backdates the most recently written telemetry event of a given type for an
         /// account — the only way a test can control "days from obtained to first use" without
         /// waiting real days between the two calls that produce those two events.</summary>

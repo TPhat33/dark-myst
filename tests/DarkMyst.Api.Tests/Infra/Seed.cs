@@ -26,6 +26,13 @@ namespace DarkMyst.Api.Tests.Infra
             response.EnsureSuccessStatusCode();
         }
 
+        public static async Task GrantGemsAsync(HttpClient client, string token, int amount)
+        {
+            HttpResponseMessage response = await client.ApiPost(
+                "/debug/grant-gems", token, "seed-gems-" + System.Guid.NewGuid(), new { amount });
+            response.EnsureSuccessStatusCode();
+        }
+
         public static async Task GrantMaterialAsync(HttpClient client, string token, string materialId, int amount)
         {
             HttpResponseMessage response = await client.ApiPost(
