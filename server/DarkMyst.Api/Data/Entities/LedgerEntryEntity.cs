@@ -6,7 +6,11 @@ namespace DarkMyst.Api.Data.Entities
     {
         Gold = 0,
         Material = 1,
-        Character = 2
+        Character = 2,
+
+        /// <summary>Premium currency (<see cref="AccountEntity.Gems"/>) — added with the summon
+        /// system, see that property's remarks.</summary>
+        Gems = 3
     }
 
     /// <summary>

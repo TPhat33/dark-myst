@@ -44,6 +44,12 @@ namespace DarkMyst.Api.Data
 
         public DbSet<TelemetryEventEntity> TelemetryEvents => Set<TelemetryEventEntity>();
 
+        public DbSet<SummonStateEntity> SummonStates => Set<SummonStateEntity>();
+
+        public DbSet<AccountLineEntity> AccountLines => Set<AccountLineEntity>();
+
+        public DbSet<EchoShardEntity> EchoShards => Set<EchoShardEntity>();
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<AccountEntity>(b =>
@@ -180,6 +186,27 @@ namespace DarkMyst.Api.Data
                 // ON DELETE CASCADE: deleting an account (not implemented yet, but the store
                 // requirement docs/08-metrics.md principle 4 names) must take every event about it
                 // with it, with no separate cleanup step to remember.
+                b.HasOne<AccountEntity>().WithMany().HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<SummonStateEntity>(b =>
+            {
+                b.ToTable("summon_state");
+                b.HasKey(x => x.AccountId);
+                b.HasOne<AccountEntity>().WithMany().HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<AccountLineEntity>(b =>
+            {
+                b.ToTable("account_lines");
+                b.HasKey(x => new { x.AccountId, x.LineId });
+                b.HasOne<AccountEntity>().WithMany().HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<EchoShardEntity>(b =>
+            {
+                b.ToTable("echo_shards");
+                b.HasKey(x => new { x.AccountId, x.LineId });
                 b.HasOne<AccountEntity>().WithMany().HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Cascade);
             });
         }

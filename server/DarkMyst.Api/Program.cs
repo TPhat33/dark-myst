@@ -17,6 +17,7 @@ using DarkMyst.Api.Expeditions;
 using DarkMyst.Api.Health;
 using DarkMyst.Api.Idempotency;
 using DarkMyst.Api.Ledger;
+using DarkMyst.Api.Summon;
 using DarkMyst.Api.Teams;
 using DarkMyst.Api.Telemetry;
 using Microsoft.AspNetCore.Builder;
@@ -70,6 +71,7 @@ builder.Services.AddScoped<AdminContentService>();
 builder.Services.AddScoped<AdminSweepService>();
 builder.Services.AddScoped<TelemetryWriter>();
 builder.Services.AddScoped<AdminTelemetryService>();
+builder.Services.AddScoped<SummonService>();
 
 // The admin tool (admin/, a Vite dev server or a static build) is served from a different origin
 // than this API, so a browser calling /admin/* needs CORS allowed explicitly — nothing else in
@@ -137,7 +139,7 @@ app.MapGet("/accounts/me", async (HttpContext http, ApiDbContext db, AccountServ
 {
     AccountEntity account = await AccountAuth.RequireAccountAsync(http, db, ct);
     AccountSaveSummary summary = await accounts.SummarizeAsync(account.Id, ct);
-    return Results.Ok(new { accountId = account.Id, kind = account.Kind.ToString(), gold = account.Gold, summary });
+    return Results.Ok(new { accountId = account.Id, kind = account.Kind.ToString(), gold = account.Gold, gems = account.Gems, summary });
 });
 
 app.MapPost("/accounts/link/start", async (HttpContext http, ApiDbContext db, LinkingService linking,
@@ -216,6 +218,67 @@ app.MapPost("/evolve/confirm", async (HttpContext http, ApiDbContext db, EvolveS
     }, ct);
 
     return ApiIo.ToResult(outcome);
+});
+
+// ---------------------------------------------------------------------------
+// Summon (docs/12-summon-spec.md, docs/10-backend-spec.md's summon section). Player auth, same
+// bearer token as everything above; every mutating call (pull, spark-redeem, attune) goes through
+// IdempotencyService.ExecuteAsync exactly like evolve/expeditions/debug-grant.
+// ---------------------------------------------------------------------------
+
+app.MapPost("/summon/pull", async (HttpContext http, ApiDbContext db, SummonService summon,
+    IdempotencyService idempotency, CancellationToken ct) =>
+{
+    AccountEntity account = await AccountAuth.RequireAccountAsync(http, db, ct);
+    (SummonPullRequest request, string raw) = await ApiIo.ReadBodyAsync<SummonPullRequest>(http.Request, jsonOptions, ct);
+    string key = ApiIo.RequireIdempotencyKey(http.Request);
+
+    IdempotencyOutcome outcome = await idempotency.ExecuteAsync(account.Id, "summon/pull", key, raw, async () =>
+    {
+        SummonPullResponse response = await summon.PullAsync(account.Id, request, key, ct);
+        return new IdempotentOperationResult(200, response);
+    }, ct);
+
+    return ApiIo.ToResult(outcome);
+});
+
+app.MapPost("/summon/spark-redeem", async (HttpContext http, ApiDbContext db, SummonService summon,
+    IdempotencyService idempotency, CancellationToken ct) =>
+{
+    AccountEntity account = await AccountAuth.RequireAccountAsync(http, db, ct);
+    (SummonSparkRedeemRequest request, string raw) = await ApiIo.ReadBodyAsync<SummonSparkRedeemRequest>(http.Request, jsonOptions, ct);
+    string key = ApiIo.RequireIdempotencyKey(http.Request);
+
+    IdempotencyOutcome outcome = await idempotency.ExecuteAsync(account.Id, "summon/spark-redeem", key, raw, async () =>
+    {
+        SummonSparkRedeemResponse response = await summon.SparkRedeemAsync(account.Id, request, key, ct);
+        return new IdempotentOperationResult(200, response);
+    }, ct);
+
+    return ApiIo.ToResult(outcome);
+});
+
+app.MapPost("/summon/attune", async (HttpContext http, ApiDbContext db, SummonService summon,
+    IdempotencyService idempotency, CancellationToken ct) =>
+{
+    AccountEntity account = await AccountAuth.RequireAccountAsync(http, db, ct);
+    (SummonAttuneRequest request, string raw) = await ApiIo.ReadBodyAsync<SummonAttuneRequest>(http.Request, jsonOptions, ct);
+    string key = ApiIo.RequireIdempotencyKey(http.Request);
+
+    IdempotencyOutcome outcome = await idempotency.ExecuteAsync(account.Id, "summon/attune", key, raw, async () =>
+    {
+        SummonAttuneResponse response = await summon.AttuneAsync(account.Id, request, key, ct);
+        return new IdempotentOperationResult(200, response);
+    }, ct);
+
+    return ApiIo.ToResult(outcome);
+});
+
+app.MapGet("/summon/state", async (HttpContext http, ApiDbContext db, SummonService summon, CancellationToken ct) =>
+{
+    AccountEntity account = await AccountAuth.RequireAccountAsync(http, db, ct);
+    SummonStateResponse state = await summon.GetStateAsync(account.Id, ct);
+    return Results.Ok(state);
 });
 
 // ---------------------------------------------------------------------------
@@ -470,6 +533,22 @@ if (app.Environment.IsDevelopment() || builder.Configuration.GetValue<bool>("Deb
         IdempotencyOutcome outcome = await idempotency.ExecuteAsync(account.Id, "debug/grant-gold", key, raw, async () =>
         {
             await DebugGrants.GrantGoldAsync(db, ledger, account.Id, request.Amount, key, ct);
+            return new IdempotentOperationResult(200, new { granted = request.Amount });
+        }, ct);
+
+        return ApiIo.ToResult(outcome);
+    });
+
+    app.MapPost("/debug/grant-gems", async (HttpContext http, ApiDbContext db, LedgerService ledger,
+        IdempotencyService idempotency, CancellationToken ct) =>
+    {
+        AccountEntity account = await AccountAuth.RequireAccountAsync(http, db, ct);
+        (GrantGemsRequest request, string raw) = await ApiIo.ReadBodyAsync<GrantGemsRequest>(http.Request, jsonOptions, ct);
+        string key = ApiIo.RequireIdempotencyKey(http.Request);
+
+        IdempotencyOutcome outcome = await idempotency.ExecuteAsync(account.Id, "debug/grant-gems", key, raw, async () =>
+        {
+            await DebugGrants.GrantGemsAsync(db, ledger, account.Id, request.Amount, key, ct);
             return new IdempotentOperationResult(200, new { granted = request.Amount });
         }, ct);
 

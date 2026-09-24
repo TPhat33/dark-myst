@@ -58,6 +58,39 @@ namespace DarkMyst.Api.Ledger
             });
         }
 
+        /// <summary>Applies a gems delta (positive or negative) — the same shape as
+        /// <see cref="ApplyGold"/>, for the premium currency (see
+        /// <see cref="AccountEntity.Gems"/>'s remarks). Never lets gems go negative; the caller is
+        /// expected to have validated affordability first.</summary>
+        public void ApplyGems(AccountEntity account, int delta, string reason, string idempotencyKey)
+        {
+            if (delta == 0)
+            {
+                return;
+            }
+
+            checked
+            {
+                account.Gems += delta;
+            }
+
+            if (account.Gems < 0)
+            {
+                throw new InvalidOperationException("Refusing to let account " + account.Id + " go negative on gems.");
+            }
+
+            _db.Ledger.Add(new LedgerEntryEntity
+            {
+                AccountId = account.Id,
+                Kind = LedgerKind.Gems,
+                RefId = null,
+                Delta = delta,
+                Reason = reason,
+                IdempotencyKey = idempotencyKey,
+                CreatedAt = DateTimeOffset.UtcNow
+            });
+        }
+
         /// <summary>Applies a material delta. A missing <see cref="InventoryMaterialEntity"/> row
         /// is created on the first grant; a row is never deleted even if it reaches zero, so a
         /// listing shows "0 of an item you have handled before" the same way it would show any

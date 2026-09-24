@@ -41,6 +41,17 @@ namespace DarkMyst.Api.Data.Entities
         /// </summary>
         public int Gold { get; set; }
 
+        /// <summary>
+        /// Premium currency ("อัญมณี", docs/04-economy-spec.md) — added with the summon system
+        /// since it is the first thing in this API that actually spends gems (`POST /summon/pull`).
+        /// Maintained the same way <see cref="Gold"/> is: always written in the same transaction as
+        /// the <see cref="LedgerEntryEntity"/> row that changed it, via
+        /// <see cref="Ledger.LedgerService.ApplyGems"/>. There is still no real purchase flow
+        /// (docs/10-backend-spec.md "deliberately deferred") — <c>/debug/grant-gems</c> is this
+        /// currency's stand-in, same as <c>/debug/grant-gold</c> is for gold.
+        /// </summary>
+        public int Gems { get; set; }
+
         /// <summary>Bearer token clients present as `Authorization: Bearer {token}`. Null once the
         /// account is <see cref="AccountKind.Superseded"/> — a superseded account can never
         /// authenticate again, only be read back during a link decision.</summary>

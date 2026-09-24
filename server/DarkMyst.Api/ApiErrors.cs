@@ -5,6 +5,7 @@ using DarkMyst.Api.Content;
 using DarkMyst.Api.Evolve;
 using DarkMyst.Api.Expeditions;
 using DarkMyst.Api.Idempotency;
+using DarkMyst.Api.Summon;
 using DarkMyst.Api.Teams;
 using DarkMyst.Content;
 
@@ -29,6 +30,9 @@ namespace DarkMyst.Api
 
                 case EvolveRefusedException evolveRefused:
                     return (409, new { error = "evolve_refused", blockers = evolveRefused.Blockers });
+
+                case SummonRefusedException summonRefused:
+                    return (409, new { error = "summon_refused", code = summonRefused.Code, message = summonRefused.Message });
 
                 case ExpeditionRefusedException expeditionRefused:
                     return (409, new { error = "expedition_refused", message = expeditionRefused.Message });

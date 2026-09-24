@@ -72,6 +72,18 @@ namespace DarkMyst.Api.Debug
             await db.SaveChangesAsync(ct);
         }
 
+        /// <summary>Stand-in for a real gems purchase — see <c>Data/Entities/AccountEntity.cs</c>
+        /// <c>Gems</c> remarks and this class's own type doc comment. Added alongside the summon
+        /// endpoints (the first thing in this API that spends gems) purely so a test/demo account
+        /// can reach <c>POST /summon/pull</c> without a real store.</summary>
+        public static async Task GrantGemsAsync(
+            ApiDbContext db, LedgerService ledger, string accountId, int amount, string idempotencyKey, CancellationToken ct)
+        {
+            AccountEntity account = await db.Accounts.FindAsync(new object[] { accountId }, ct);
+            ledger.ApplyGems(account, amount, "debug:grant-gems", idempotencyKey);
+            await db.SaveChangesAsync(ct);
+        }
+
         public static Task GrantMaterialAsync(
             LedgerService ledger, string accountId, string materialId, int amount, string idempotencyKey, CancellationToken ct)
         {
