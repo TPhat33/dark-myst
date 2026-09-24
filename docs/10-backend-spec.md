@@ -23,7 +23,8 @@ server/DarkMyst.Api/
   Expeditions/                 server ownership ของ ExpeditionRun (start/choose/resume/abandon)
   Battles/                     สนามทดลอง + การจับ checksum ไม่ตรง (docs/07)
   Teams/                       ทีมที่บันทึกไว้ — เจ้าของ IsInUse ที่ evolve ต้องเช็ค
-  Ledger/                      บันทึกการเคลื่อนไหวทอง/ไอเทม/ตัวละครแบบ append-only
+  Ledger/                      บันทึกการเคลื่อนไหวทอง/อัญมณี/ไอเทม/ตัวละครแบบ append-only
+  Summon/                      docs/12-summon-spec.md: pull/spark-redeem/attune/state
   Idempotency/                 กลไกกลางที่ endpoint ที่แก้ข้อมูลทุกตัวต้องผ่าน
   Debug/                       endpoint แจกของสำหรับทดสอบ/สาธิต (ดูหัวข้อ "สิ่งที่ตั้งใจตัดออก")
   Auth/                        bearer-token stub (player) + gate ของ admin (AdminAuth.cs)
@@ -44,6 +45,10 @@ server/DarkMyst.Api/
 | `POST /accounts/link/confirm` | ต้อง | ต้อง | ยืนยันเลือกฝั่งไหนเมื่อมีการชนกัน |
 | `POST /evolve/preview` | ต้อง | ไม่ต้อง | เรียก `Evolution.Preview()` อย่างเดียว ไม่เขียนอะไร |
 | `POST /evolve/confirm` | ต้อง | ต้อง | ห้าขั้นตอนเต็มในธุรกรรมเดียว |
+| `POST /summon/pull` | ต้อง | ต้อง | สุ่ม 1 หรือ 10 ครั้ง หักอัญมณี ให้ตัวละครใหม่หรือ Echo shard |
+| `POST /summon/spark-redeem` | ต้อง | ต้อง | แลก Spark 150 แต้มเป็นสายที่เลือก (เศษยกยอด) |
+| `POST /summon/attune` | ต้อง | ต้อง | ใช้ Echo shard ไต่ `inheritedBonusPerMille` ถึงเพดาน |
+| `GET /summon/state` | ต้อง | - | pity/floor/spark counter และยอด Echo shard ต่อสาย |
 | `POST /teams` | ต้อง | ต้อง | บันทึกทีม — ตั้ง `IsInUse` ให้สมาชิก |
 | `DELETE /teams/{id}` | ต้อง | ต้อง | ลบทีม — ปลด `IsInUse` ให้ตัวที่ไม่ได้อยู่ทีมอื่น |
 | `POST /expeditions/start` | ต้อง | ต้อง | สร้างรันใหม่ ปักเวอร์ชัน content ปัจจุบัน |
@@ -127,6 +132,67 @@ header `Idempotency-Key` เป็นสตริงที่ไคลเอน�
 `EvolvePreviewResponse.StatsAfter` มาจาก `Progression.ComputeStats(preview.Result)` ตัวเดียวกับ
 ที่ `EvolvedCharacterResponse.StatsAfter` ใช้ — ไม่มีสูตรคู่ขนาน
 
+## Summon: pull / spark-redeem / attune (docs/12-summon-spec.md)
+
+`Summon/SummonService.cs` ทำเหมือน `EvolveService`: หนึ่ง operation เต็ม ๆ ต่อการเรียกหนึ่งครั้ง
+อยู่ใน transaction เดียวที่ `IdempotencyService.ExecuteAsync` เปิดไว้แล้ว และไม่คำนวณกฎ pity/floor/
+tier เองเลยแม้แต่บรรทัดเดียว — ทุกครั้งเรียก `DarkMyst.Sim.SummonEngine.ResolvePull` ซึ่งเป็นฟังก์ชัน
+เดียวกับที่ `simrunner summon` วัดผล (ดูหัวข้อถัดไปว่าทำไมถึงอยู่ใน `DarkMyst.Sim` ไม่ใช่โค้ดใหม่ที่
+คัดลอกกฎมาเขียนซ้ำ)
+
+- **`POST /summon/pull`** — `{ count: 1 | 10 }` หักอัญมณีตามราคา
+  `SummonService.PullPriceGemsPerPull` **(ยังไม่ล็อก — ดูย่อหน้าถัดไป)** แล้ววนสุ่มทีละครั้งด้วย
+  `DeterministicRandom` ที่ seed จาก `RandomNumberGenerator` สดใหม่ทุกคำขอ (คาดเดาไม่ได้ต่อบัญชี
+  ต่อคำขอ ไม่ใช่ seed ตายตัวแบบที่ battle ใช้เพื่อ replay ได้ — สองจุดประสงค์ต่างกัน) ต่อการสุ่มหนึ่ง
+  ครั้ง: อัปเดต pity/floor counter ใน `SummonStateEntity`, ถ้าเป็นสายใหม่ (เช็คจาก `AccountLineEntity`
+  — ดูย่อหน้าถัดไป) สร้าง `OwnedCharacterEntity` ขั้น 1 เลเวล 1 ผ่าน `LedgerService`, ถ้าซ้ำให้บวก
+  Echo shard เข้า `EchoShardEntity` ตามอัตราของ `SummonRules.Proposed.DuplicateShardsForRarity`, และ
+  เขียน `character_obtained` (source: `"summon"`) + `summon_pulled` ต่อการสุ่มหนึ่งครั้ง R5 ที่ยังไม่มี
+  สายจริงพับลงมาเป็น R4 อัตโนมัติโดย `SummonEngine.PickFromPool` เอง (เหมือนที่ `simrunner summon`
+  ทำ) ไม่มีทางโยน exception Spark แต้มไม่ถูกใช้อัตโนมัติแม้ถึงเพดาน — response คืน `canRedeemSpark`
+  ให้ผู้เล่นกดแลกเองผ่าน endpoint ถัดไป
+- **`POST /summon/spark-redeem`** — `{ lineId }` ปฏิเสธด้วย 409 ถ้า `SparkPoints` ต่ำกว่า
+  `SummonRules.Proposed.SparkThreshold` (150) หรือ `lineId` ไม่ใช่สายขั้น-1 ที่สุ่มได้จริง สำเร็จแล้วหัก
+  แต้ม Spark **เท่ากับ threshold พอดี** เศษที่เหลือยกไปสะสมต่อ ไม่รีเซ็ตเป็น 0 ให้ตัวละครหรือ shard
+  เหมือน pull ทุกประการ แล้วเขียน `character_obtained` (source: `"spark"`)
+- **`POST /summon/attune`** — `{ instanceId, shardsToSpend }` เลือกแบบ "ใช้เท่าที่ขอ" ไม่ใช่ "ใช้
+  ทั้งหมดที่มี" (คอมโพสได้ง่ายกว่า) ปฏิเสธถ้าไม่ใช่เจ้าของ, ไม่ใช่ขั้น 1 ของสาย, หรือ `shardsToSpend`
+  เกินยอดที่มี สำเร็จแล้วเพิ่ม `InheritedBonusPerMille` ทีละ `shardsToSpend / ShardsPerPerMille`
+  (หารปัดลง) **ถูก clamp ด้วยเพดานที่อ่านจาก content
+  (`ContentPack.Progression.Evolve.InheritedBonusCapPerMille`) เสมอ ไม่ hardcode 300** shard ที่เกิน
+  ความจำเป็น (ทั้งเศษต่ำกว่า `ShardsPerPerMille` และส่วนที่เกินเพดาน) **ไม่ถูกหักออกจากยอดคงเหลือ** —
+  ยังธนาคารอยู่ให้ใช้ครั้งหน้า เขียน event `attune_completed` ใหม่ (ดูตารางด้านล่าง)
+- **`GET /summon/state`** — อ่านอย่างเดียว ไม่ต้อง Idempotency-Key คืน pity/floor/spark และยอด Echo
+  shard ต่อสายทั้งหมดของบัญชี
+
+**อัญมณี (`AccountEntity.Gems`)** เพิ่มเข้ามาพร้อมรอบนี้ — เป็นสกุลเงินแรกในเอพีไอที่มี endpoint จริง
+ใช้จ่าย (ก่อนหน้านี้มีแต่ทอง) บำรุงรักษาเหมือน `Gold` ทุกประการผ่าน `LedgerService.ApplyGems` (เพิ่ม
+`LedgerKind.Gems`) `/debug/grant-gems` เป็นตัวยืนแทนการซื้อจริง เกตด้วยเงื่อนไขเดียวกับ
+`/debug/grant-*` ตัวอื่น (ดูหัวข้อ "สิ่งที่ตั้งใจตัดออก")
+
+**ราคา `SummonService.PullPriceGemsPerPull = 150` ต่อครั้ง (10 ครั้ง = 10 เท่า ไม่มีส่วนลด) ยังไม่ล็อก**
+— มีคอมเมนต์ `NOT LOCKED` ติดอยู่ที่ตัวค่าคงที่ใน `Summon/SummonService.cs` ชี้กลับมาที่
+[docs/04-economy-spec.md](04-economy-spec.md) หัวข้อ "ตัวเลขที่ต้องมีก่อนล็อกเอกสารนี้" ข้อ 4
+("สัดส่วนเวลาที่ลดลงถ้าจ่ายเงิน") — ตัวเลขนี้มีไว้ให้ endpoint มีอะไรให้หักทดสอบได้เท่านั้น ไม่ใช่ราคา
+จริงที่ตัดสินใจแล้ว
+
+**ทำไม `DarkMyst.Sim.SummonEngine` ไม่ใช่โค้ดคัดลอก:** `SummonSimulator` (batch statistics tool ของ
+`simrunner summon`) เดิมมีตรรกะ "สุ่มหนึ่งครั้ง" ฝังอยู่ในลูปของมันเอง ถูกแยกออกมาเป็น
+`SummonEngine.ResolvePull` (ฟังก์ชัน static บริสุทธิ์ รับ pity/floor counter + RNG คืน tier/character
+ที่สุ่มได้จริงพร้อม counter หลังสุ่ม) แล้วให้ `SummonSimulator` เองเรียกกลับเข้าไปแทนของเดิม — ยืนยัน
+ด้วย diff เอาต์พุตของ `simrunner summon` ก่อน/หลังว่าไบต์ต่อไบต์เหมือนเดิมทุกประการ บวกเทสต์ล็อก
+(`SummonSimulatorTests.Run_output_for_Proposed_is_locked_at_a_fixed_seed`) `server/DarkMyst.Api` อ้าง
+โปรเจกต์ `DarkMyst.Sim` อยู่แล้ว (`AdminSweepService` ใช้ `DarkMyst.Sim.SweepResult`) จึงเรียก
+`SummonEngine` ตรง ๆ ไม่ต้องสร้างไลบรารีใหม่ — ผลคือมีกฎ pity/floor/tier ที่ implement ไว้ที่เดียวใน
+รีโปทั้งหมด ทั้ง `simrunner summon` และ `POST /summon/pull` เรียกฟังก์ชันเดียวกัน
+
+**ทำไม `AccountLineEntity` แทนที่จะ join `owned_characters` สด ๆ ทุกครั้ง:** ต้องเช็ค "เคยได้สายนี้
+มาก่อนไหม" ทุกการสุ่มหนึ่งครั้ง การ join ตัวละครทุกตัวที่บัญชีถืออยู่กับ content pack เพื่อ resolve
+`lineId` เป็น O(จำนวนตัวละครที่ถือ) ต่อการสุ่มหนึ่งครั้ง และโตขึ้นเรื่อย ๆ ตามอายุบัญชี จึงเลือกตาราง
+เล็ก ๆ ที่ดูแลเองตอนที่แจกตัวละครขั้น-1 ตัวแรกของสาย (ที่ summon/spark-redeem เท่านั้น —
+`Debug/DebugGrants.cs` ตั้งใจไม่แตะตารางนี้ เพราะเป็นตัวยืนสำหรับทดสอบ ไม่ใช่เส้นทางแจกจริง) แทน —
+ดู `Data/Entities/AccountLineEntity.cs` remarks
+
 ## Expedition: สิ่งที่ server ต้องทำเองตามที่ library บอกไว้
 
 `ExpeditionService` implement clone-then-commit pattern ตามที่
@@ -192,6 +258,8 @@ event มีอยู่ก็ต่อเมื่อการเปลี่�
 | `battle_finished` | ทุกการต่อสู้ที่เซิร์ฟเวอร์เป็นคนตัดสิน: node การต่อสู้ใน expedition (`ExpeditionService.ChooseAsync`) และ `POST /battle/run` | `{context: "expedition"\|"battle_run", runId?, stageId?, encounterId, outcome: "win"\|"loss"\|"draw", turns, members: [...]}` — draw นับแยกจาก loss ในนี้ (ต่างจากกติกาความคืบหน้าของ expedition ที่ถือว่า draw คือแพ้) เพื่อไม่ให้ telemetry กลืนข้อมูลจริงทิ้ง |
 | `evolve_completed` | `POST /evolve/confirm` (เฉพาะที่สำเร็จ) | `{instanceId, fromCharacterId, toCharacterId, lineId, fromStage, toStage, inheritedBonusPerMilleAfter, materialInstanceIds, sameLineMaterialCount}` |
 | `team_saved` | `POST /teams` | `{teamId, members: [...]}` |
+| `summon_pulled` | `POST /summon/pull` (ทุกครั้งที่สุ่ม แม้อยู่ใน batch 10 ครั้ง) | `{bannerId, pullIndex, pityCounterBefore, tier, characterId, lineId, isDuplicate, shardsGranted}` — `bannerId` เป็น `"default"` เสมอในรอบนี้ (Banner ใบเดียว) `pityCounterBefore` คือค่า pity counter **ก่อน**การสุ่มครั้งนี้ (ค่าที่ป้อนให้ `SummonEngine.ResolvePull`) |
+| `attune_completed` | `POST /summon/attune` (ทุกครั้งที่สำเร็จ แม้ใช้ shard ไป 0 เพราะเต็มเพดานแล้ว) | `{instanceId, lineId, shardsSpent, inheritedBonusPerMilleBefore, inheritedBonusPerMilleAfter}` — `shardsSpent` คือจำนวนที่ถูกหักจริง (คูณด้วย `ShardsPerPerMille` เสมอ) ซึ่งอาจน้อยกว่า `shardsToSpend` ที่ขอ (ส่วนต่างยังธนาคารอยู่ ไม่ได้ถูกหัก) |
 
 `lineId` คือ `CharacterData.LineId` ที่มีอยู่แล้วในเนื้อหา (จัดกลุ่มทุกขั้น evolve ของสายเดียวกัน
 เข้าด้วยกัน) — resolve จาก content pack ของเวอร์ชันที่ตัวละครนั้นถืออยู่ตอนเขียน event
@@ -200,10 +268,8 @@ event มีอยู่ก็ต่อเมื่อการเปลี่�
 แทนที่จะทำให้การเขียนเกมพัง — telemetry เป็นช่องทางรอง (side channel) ไม่ใช่กฎเกม จึงไม่ยอมให้
 การหาสายตัวละครพังแล้วลากการกระทำจริงของผู้เล่นพังตามไปด้วย
 
-**ยังไม่มี `summon_pulled`** เพราะยังไม่มี endpoint สุ่มจริงในรอบนี้ (`docs/12` ข้อ 3+ ยังไม่เริ่ม)
-รูปร่าง payload ที่ตั้งใจไว้ล่วงหน้า (`Telemetry/TelemetryEvents.cs`) คือ
-`{bannerId, pullIndex, pityCounterBefore, tier, characterId, lineId, isDuplicate, shardsGranted}`
-เพื่อให้ใครสร้าง endpoint สุ่มทีหลังเจอที่ที่ต้องเติมทันที
+`summon_pulled` และ `attune_completed` เขียนจริงแล้วตั้งแต่รอบที่สร้าง `POST /summon/*` — ดูหัวข้อ
+"Summon: pull / spark-redeem / attune" ด้านบน
 
 ### Admin — อ่าน telemetry
 
@@ -265,12 +331,14 @@ Bearer token ของบัญชีที่ชนะถูกส่งกล�
 
 - **ไม่มีระบบซื้อในแอปจริง** (`docs/04-economy-spec.md` เอง: ตัวเลขเศรษฐกิจยังไม่ล็อกจนกว่าจะ
   ได้ข้อมูลจากระยะ C) — `Debug/DebugGrants.cs` เป็นตัวแทนชั่วคราวสำหรับให้ทดสอบ/สาธิตวงจร
-  evolve และ expedition ได้แบบ end-to-end โดยไม่ต้องมีระบบร้านค้า สามตัวคือ
-  `POST /debug/grant-gold` (เพิ่มทอง), `POST /debug/grant-material` (เพิ่มวัตถุดิบ) และ
-  `POST /debug/grant-character` (สร้างตัวละครใหม่ให้บัญชี) แต่ละตัวแก้ยอดเศรษฐกิจจริงเหมือน
+  evolve, expedition และตอนนี้รวม summon ได้แบบ end-to-end โดยไม่ต้องมีระบบร้านค้า สี่ตัวคือ
+  `POST /debug/grant-gold` (เพิ่มทอง), `POST /debug/grant-gems` (เพิ่มอัญมณี — เพิ่มเข้ามาพร้อมกับ
+  summon เพราะเป็น endpoint แรกที่ใช้อัญมณีจริง), `POST /debug/grant-material` (เพิ่มวัตถุดิบ) และ
+  `POST /debug/grant-character` (สร้างตัวละครใหม่ให้บัญชี — **ไม่**เขียน `AccountLineEntity`
+  ตั้งใจ ดูหัวข้อ Summon ด้านบน) แต่ละตัวแก้ยอดเศรษฐกิจจริงเหมือน
   endpoint ปกติ จึงเรียกผ่าน `IdempotencyService.ExecuteAsync` เหมือนกันทุกประการ (ไม่ใช่
   ทางลัดที่มองข้ามคีย์ที่ไคลเอนต์ส่งมา) — คู่กันมี `GET /debug/character/{instanceId}` อ่าน
-  อย่างเดียว ไว้ให้เทสต์/curl ตรวจสถานะตัวละครหลังการกระทำ ทั้งสี่ endpoint ถูกปิดไว้นอก
+  อย่างเดียว ไว้ให้เทสต์/curl ตรวจสถานะตัวละครหลังการกระทำ ทั้งห้า endpoint ถูกปิดไว้นอก
   `Development` ด้วยเงื่อนไขเดียวกันใน Program.cs: `app.Environment.IsDevelopment() ||
   Debug:AllowGrants` — ค่าเริ่มต้นใน `appsettings.json` คือ `Debug:AllowGrants=false`
   (`appsettings.Development.json` เปิดเป็น `true` สำหรับรันแบบ dev/localhost เท่านั้น)
@@ -308,9 +376,13 @@ Bearer token ของบัญชีที่ชนะถูกส่งกล�
   จะพร้อมรับคำขอ ฐานข้อมูลที่ต่อไม่ได้จริง ๆ ทำให้ startup ล้มเหลวไปก่อนที่ `/health` จะถูกเรียกได้
   ด้วยซ้ำ — ข้อจำกัดที่มีอยู่แล้วในการออกแบบ startup ไม่ใช่สิ่งที่รอบนี้แก้
 
-`tests/DarkMyst.Api.Tests/` เพียงโปรเจกต์เดียวมี **63 เคส** ณ ตอนที่เพิ่ม telemetry เข้ามา
-(`TelemetryTests.cs`, `AdminTelemetryLinesTests.cs` — 16 เคสใหม่ ครอบคลุมทุก event type,
-คำขอซ้ำ/การ refuse ไม่เขียน event ซ้ำ/ไม่เขียนเลย, gate ของ `/admin/telemetry/*`, pagination
+`tests/DarkMyst.Api.Tests/` เพียงโปรเจกต์เดียวมี **80 เคส** ณ ตอนที่เพิ่ม summon เข้ามา
+(`SummonTests.cs` — 17 เคสใหม่ ครอบคลุมการสุ่มตรงกับ `SummonEngine` ที่ seed กำหนดได้เฉพาะเทสต์,
+ตัวซ้ำได้ shard ไม่ได้ตัวละครที่สอง, คำขอซ้ำ/พร้อมกันจริงไม่แจกซ้ำ/หักซ้ำ, เงินไม่พอ refuse สะอาด,
+spark-redeem ใต้เพดาน/เกินเพดาน/เศษยกยอด, attune ตรวจความเป็นเจ้าของ/ขั้น/เพดาน 300‰ และธนาคาร
+เศษต่ำกว่า 4 shard, `GET /summon/state` ตรงกับลำดับการกระทำ) ก่อนหน้านั้นมี 63 เคสตอนที่เพิ่ม
+telemetry เข้ามา (`TelemetryTests.cs`, `AdminTelemetryLinesTests.cs` — 16 เคส ครอบคลุมทุก event
+type, คำขอซ้ำ/การ refuse ไม่เขียน event ซ้ำ/ไม่เขียนเลย, gate ของ `/admin/telemetry/*`, pagination
 ไม่มีช่องว่างไม่ซ้ำ, เลขคำนวณของ `/admin/telemetry/lines` ตรงกับ fixture ที่สร้างมือ และ cascade
 delete) ตัวเลขรวมทั้งรีโป (กฎเกมใน `DarkMyst.Sim.Tests` ฯลฯ) เปลี่ยนบ่อยกว่าที่เอกสารนี้จะตามทัน
 — รันคำสั่ง `dotnet test` เองเพื่อดูตัวเลขปัจจุบันแทนที่จะเชื่อเอกสาร ตามหลักที่ `HANDOFF.md`

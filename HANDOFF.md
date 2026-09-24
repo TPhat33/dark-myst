@@ -131,7 +131,21 @@ batching** — two agents have already been cut off mid-stream by Sonnet rate li
 
 ## Next step
 
-State at hand-off: `dotnet test` **221 green** (Combat 55, Content 51, Expedition 20, Sim 32,
-Api 63), verified by re-running, plus a curl smoke test of telemetry against a live API.
-Next useful work, none approved yet: the summon server endpoint (pity/spark server-side,
-emits `summon_pulled` per docs/10), or applying the Genshin-derived proposals.
+**Update 2026-09-24: the summon server endpoint landed.** `POST /summon/pull` (1 or 10 pulls),
+`/summon/spark-redeem`, `/summon/attune`, `GET /summon/state` — see docs/10-backend-spec.md
+"Summon" and docs/12-summon-spec.md. `DarkMyst.Sim.SummonEngine.ResolvePull` was extracted out of
+`SummonSimulator` (verified byte-identical `simrunner summon` output before/after, plus a new
+lock test) so the server and the simulator share exactly one implementation of the pity/floor/tier
+rules — `SummonRules.Proposed`'s rate *values* were not touched. `AccountEntity.Gems` +
+`LedgerKind.Gems` + `/debug/grant-gems` were added alongside it (the first endpoint in this API
+that actually spends a currency other than gold). The pull price
+(`SummonService.PullPriceGemsPerPull = 150`) is explicitly flagged `NOT LOCKED` in code, pointing
+back at docs/04's "ตัวเลขที่ต้องมีก่อนล็อกเอกสารนี้" — do not treat it as a real price.
+
+State at hand-off: `dotnet test` **239 green** (Combat 55, Content 51, Expedition 20, Sim 33,
+Api 80), verified by re-running. `src/DarkMyst.Combat`, `src/DarkMyst.Content`,
+`src/DarkMyst.Expedition` and `content/` were not touched this round.
+
+Next useful work, none approved yet: applying the Genshin-derived proposals (docs/12 "เทียบกับ
+โครงแบบ Genshin"), or a real currency-purchase flow to replace `/debug/grant-gems`/`grant-gold`
+once phase-C farm data locks the summon/economy numbers.

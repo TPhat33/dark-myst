@@ -206,6 +206,15 @@ hard pity และ spark ที่แสดงบนจอ
 
 ## สิ่งที่ต้องมีก่อนล็อกตัวเลข
 
+**เพิ่มเข้ามา 2026-09-24: endpoint สุ่มจริงมีแล้ว** (`POST /summon/pull`,
+`/summon/spark-redeem`, `/summon/attune`, `GET /summon/state` — ดู
+[10-backend-spec.md](10-backend-spec.md) หัวข้อ "Summon") กฎที่ endpoint นี้ใช้ยังเป็น
+`SummonRules.Proposed` ตัวเดิม ยังไม่ได้ล็อก และราคาสกุลเงิน
+(`SummonService.PullPriceGemsPerPull`) เป็นค่าที่ตั้งไว้ชั่วคราวเท่านั้น (ติด `NOT LOCKED` ใน
+โค้ด) — สิ่งที่เปลี่ยนคือตอนนี้มีทางเก็บตัวเลขฟาร์มจริงจากระยะ C ผ่าน `summon_pulled` +
+`attune_completed` telemetry แล้ว (ก่อนหน้านี้มีแต่ `simrunner summon` ซึ่งเป็นการจำลอง ไม่ใช่ข้อมูล
+ผู้เล่นจริง) รายการข้อ 1-4 ด้านล่างยังตอบไม่ได้จนกว่าจะมีผู้เล่นจริงเล่นผ่าน endpoint นี้พอจะวัดได้
+
 จากระยะ C:
 
 1. ผู้เล่นฟรีได้สิทธิ์สุ่มกี่ครั้งต่อวัน
