@@ -23,7 +23,7 @@ server/DarkMyst.Api/
   Expeditions/                 server ownership ของ ExpeditionRun (start/choose/resume/abandon)
   Battles/                     สนามทดลอง + การจับ checksum ไม่ตรง (docs/07)
   Teams/                       ทีมที่บันทึกไว้ — เจ้าของ IsInUse ที่ evolve ต้องเช็ค
-  Ledger/                      บันทึกการเคลื่อนไหวทอง/อัญมณี/ไอเทม/ตัวละครแบบ append-only
+  Ledger/                      บันทึกการเคลื่อนไหวทอง/อัญมณี (Pearls)/ไอเทม/ตัวละครแบบ append-only
   Summon/                      docs/12-summon-spec.md: pull/spark-redeem/attune/state
   Idempotency/                 กลไกกลางที่ endpoint ที่แก้ข้อมูลทุกตัวต้องผ่าน
   Debug/                       endpoint แจกของสำหรับทดสอบ/สาธิต (ดูหัวข้อ "สิ่งที่ตั้งใจตัดออก")
@@ -45,10 +45,10 @@ server/DarkMyst.Api/
 | `POST /accounts/link/confirm` | ต้อง | ต้อง | ยืนยันเลือกฝั่งไหนเมื่อมีการชนกัน |
 | `POST /evolve/preview` | ต้อง | ไม่ต้อง | เรียก `Evolution.Preview()` อย่างเดียว ไม่เขียนอะไร |
 | `POST /evolve/confirm` | ต้อง | ต้อง | ห้าขั้นตอนเต็มในธุรกรรมเดียว |
-| `POST /summon/pull` | ต้อง | ต้อง | สุ่ม 1 หรือ 10 ครั้ง หักอัญมณี ให้ตัวละครใหม่หรือ Echo shard |
+| `POST /summon/pull` | ต้อง | ต้อง | สุ่ม 1 หรือ 10 ครั้ง หักอัญมณี ให้ตัวละครใหม่หรือ Echo shard (Shards) |
 | `POST /summon/spark-redeem` | ต้อง | ต้อง | แลก Spark 150 แต้มเป็นสายที่เลือก (เศษยกยอด) |
-| `POST /summon/attune` | ต้อง | ต้อง | ใช้ Echo shard ไต่ `inheritedBonusPerMille` ถึงเพดาน |
-| `GET /summon/state` | ต้อง | - | pity/floor/spark counter และยอด Echo shard ต่อสาย |
+| `POST /summon/attune` | ต้อง | ต้อง | ใช้ Echo shard (Shards) ไต่ `inheritedBonusPerMille` ถึงเพดาน |
+| `GET /summon/state` | ต้อง | - | pity/floor/spark counter และยอด Echo shard (Shards) ต่อสาย |
 | `POST /teams` | ต้อง | ต้อง | บันทึกทีม — ตั้ง `IsInUse` ให้สมาชิก |
 | `DELETE /teams/{id}` | ต้อง | ต้อง | ลบทีม — ปลด `IsInUse` ให้ตัวที่ไม่ได้อยู่ทีมอื่น |
 | `POST /expeditions/start` | ต้อง | ต้อง | สร้างรันใหม่ ปักเวอร์ชัน content ปัจจุบัน |
@@ -146,7 +146,7 @@ tier เองเลยแม้แต่บรรทัดเดียว — �
   ต่อคำขอ ไม่ใช่ seed ตายตัวแบบที่ battle ใช้เพื่อ replay ได้ — สองจุดประสงค์ต่างกัน) ต่อการสุ่มหนึ่ง
   ครั้ง: อัปเดต pity/floor counter ใน `SummonStateEntity`, ถ้าเป็นสายใหม่ (เช็คจาก `AccountLineEntity`
   — ดูย่อหน้าถัดไป) สร้าง `OwnedCharacterEntity` ขั้น 1 เลเวล 1 ผ่าน `LedgerService`, ถ้าซ้ำให้บวก
-  Echo shard เข้า `EchoShardEntity` ตามอัตราของ `SummonRules.Proposed.DuplicateShardsForRarity`, และ
+  Echo shard (Shards) เข้า `EchoShardEntity` ตามอัตราของ `SummonRules.Proposed.DuplicateShardsForRarity`, และ
   เขียน `character_obtained` (source: `"summon"`) + `summon_pulled` ต่อการสุ่มหนึ่งครั้ง R5 ที่ยังไม่มี
   สายจริงพับลงมาเป็น R4 อัตโนมัติโดย `SummonEngine.PickFromPool` เอง (เหมือนที่ `simrunner summon`
   ทำ) ไม่มีทางโยน exception Spark แต้มไม่ถูกใช้อัตโนมัติแม้ถึงเพดาน — response คืน `canRedeemSpark`
@@ -165,7 +165,7 @@ tier เองเลยแม้แต่บรรทัดเดียว — �
 - **`GET /summon/state`** — อ่านอย่างเดียว ไม่ต้อง Idempotency-Key คืน pity/floor/spark และยอด Echo
   shard ต่อสายทั้งหมดของบัญชี
 
-**อัญมณี (`AccountEntity.Gems`)** เพิ่มเข้ามาพร้อมรอบนี้ — เป็นสกุลเงินแรกในเอพีไอที่มี endpoint จริง
+**อัญมณี (Pearls, `AccountEntity.Gems`)** เพิ่มเข้ามาพร้อมรอบนี้ — เป็นสกุลเงินแรกในเอพีไอที่มี endpoint จริง
 ใช้จ่าย (ก่อนหน้านี้มีแต่ทอง) บำรุงรักษาเหมือน `Gold` ทุกประการผ่าน `LedgerService.ApplyGems` (เพิ่ม
 `LedgerKind.Gems`) `/debug/grant-gems` เป็นตัวยืนแทนการซื้อจริง เกตด้วยเงื่อนไขเดียวกับ
 `/debug/grant-*` ตัวอื่น (ดูหัวข้อ "สิ่งที่ตั้งใจตัดออก")
