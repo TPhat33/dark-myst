@@ -13,7 +13,7 @@ namespace DarkMyst.Content.Tests
         {
             ContentPack pack = ShippedContent.Instance;
 
-            Assert.Equal("0.4.0", pack.Version);
+            Assert.Equal("0.4.1", pack.Version);
             Assert.Equal(CombatRules.Version, pack.Manifest.RulesVersion);
             Assert.NotEmpty(pack.Characters);
             Assert.NotEmpty(pack.Enemies);

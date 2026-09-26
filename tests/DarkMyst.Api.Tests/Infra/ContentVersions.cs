@@ -11,8 +11,8 @@ namespace DarkMyst.Api.Tests.Infra
     /// <see cref="MultiVersionApiTestFixture"/>.</summary>
     public static class ContentVersions
     {
-        public const string OriginalVersion = "0.4.0";
-        public const string BumpedVersion = "0.4.1";
+        public const string OriginalVersion = "0.4.1";
+        public const string BumpedVersion = "0.4.2";
 
         public static string PrepareTwoVersions()
         {

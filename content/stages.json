@@ -51,7 +51,7 @@
   "stages": [
     {
       "id": "stg_ashfields",
-      "name": "The Ashfields Expedition",
+      "name": "The Ashfields",
       "recommendedLevel": 12,
       "restHealPerMille": 400,
       "branchChancePerMille": 400,

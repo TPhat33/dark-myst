@@ -48,7 +48,7 @@ namespace DarkMyst.Api.Tests
             TelemetryEventDto evt = await GetSingleEventAsync(accountId, TelemetryEventTypes.CharacterObtained);
             CharacterObtainedPayload payload = Deserialize<CharacterObtainedPayload>(evt.Payload);
 
-            Assert.Equal("0.4.0", evt.ContentVersion);
+            Assert.Equal("0.4.1", evt.ContentVersion);
             Assert.Equal("1.0.0", evt.RulesVersion);
             Assert.Equal(granted.InstanceId, payload.InstanceId);
             Assert.Equal(AshenKnightI, payload.CharacterId);
@@ -335,7 +335,7 @@ namespace DarkMyst.Api.Tests
             response.EnsureSuccessStatusCode();
             TelemetryLinesResponse body = await response.Content.ReadFromJsonAsync<TelemetryLinesResponse>(Json.Options);
 
-            Assert.Equal(new[] { "0.4.0" }, body.ContentVersions);
+            Assert.Equal(new[] { "0.4.1" }, body.ContentVersions);
             Assert.Contains(body.Lines, l => l.LineId == "line_ashen_knight");
         }
 

@@ -3,7 +3,7 @@
     {
       "id": "chr_ashen_knight_i",
       "lineId": "line_ashen_knight",
-      "name": "Ashen Knight",
+      "name": "Vow, the Ashen Knight",
       "affinity": "Ember",
       "role": "Vanguard",
       "rarity": 3,
@@ -23,7 +23,7 @@
     {
       "id": "chr_ashen_knight_ii",
       "lineId": "line_ashen_knight",
-      "name": "Ashen Templar",
+      "name": "Vow, the Ashen Templar",
       "affinity": "Ember",
       "role": "Vanguard",
       "rarity": 4,
@@ -46,7 +46,7 @@
     {
       "id": "chr_ashen_knight_iii",
       "lineId": "line_ashen_knight",
-      "name": "Ashen Revenant Lord",
+      "name": "Vow, Revenant Lord",
       "affinity": "Ember",
       "role": "Vanguard",
       "rarity": 5,
@@ -69,7 +69,7 @@
     {
       "id": "chr_grave_warden_i",
       "lineId": "line_grave_warden",
-      "name": "Grave Warden",
+      "name": "Tally, the Gravekeeper",
       "affinity": "Umbral",
       "role": "Guard",
       "rarity": 3,
@@ -89,7 +89,7 @@
     {
       "id": "chr_grave_warden_ii",
       "lineId": "line_grave_warden",
-      "name": "Grave Sentinel",
+      "name": "Tally, the Grave Sentinel",
       "affinity": "Umbral",
       "role": "Guard",
       "rarity": 4,
@@ -112,7 +112,7 @@
     {
       "id": "chr_thorn_maiden_i",
       "lineId": "line_thorn_maiden",
-      "name": "Thorn Maiden",
+      "name": "Rue, the Thorn Maiden",
       "affinity": "Verdant",
       "role": "Bruiser",
       "rarity": 2,
@@ -132,7 +132,7 @@
     {
       "id": "chr_tide_oracle_i",
       "lineId": "line_tide_oracle",
-      "name": "Tide Oracle",
+      "name": "Ebb, the Stillwater Oracle",
       "affinity": "Tide",
       "role": "Mender",
       "rarity": 4,
@@ -152,7 +152,7 @@
     {
       "id": "chr_dawn_cantor_i",
       "lineId": "line_dawn_cantor",
-      "name": "Dawn Cantor",
+      "name": "Lark, the Dawnsinger",
       "affinity": "Radiant",
       "role": "Mender",
       "rarity": 3,
@@ -172,7 +172,7 @@
     {
       "id": "chr_ember_adept_i",
       "lineId": "line_ember_adept",
-      "name": "Ember Adept",
+      "name": "Flint, the Ember Adept",
       "affinity": "Ember",
       "role": "Breaker",
       "rarity": 3,
@@ -192,7 +192,7 @@
     {
       "id": "chr_pale_stalker_i",
       "lineId": "line_pale_stalker",
-      "name": "Pale Stalker",
+      "name": "Hush, the Pale Stalker",
       "affinity": "Umbral",
       "role": "Assassin",
       "rarity": 3,
@@ -212,7 +212,7 @@
     {
       "id": "chr_mire_hexer_i",
       "lineId": "line_mire_hexer",
-      "name": "Mire Hexer",
+      "name": "Leech, the Mire Witch",
       "affinity": "Verdant",
       "role": "Hexer",
       "rarity": 2,
@@ -232,7 +232,7 @@
     {
       "id": "chr_bramble_warden_i",
       "lineId": "line_bramble_warden",
-      "name": "Bramble Warden",
+      "name": "Barrow, the Bramble Sentinel",
       "affinity": "Verdant",
       "role": "Sentinel",
       "rarity": 3,
@@ -252,7 +252,7 @@
     {
       "id": "chr_bramble_warden_ii",
       "lineId": "line_bramble_warden",
-      "name": "Heartwood Bastion",
+      "name": "Barrow, Heartwood Bastion",
       "affinity": "Verdant",
       "role": "Sentinel",
       "rarity": 4,
@@ -275,7 +275,7 @@
     {
       "id": "chr_riptide_stormcaller_i",
       "lineId": "line_riptide_stormcaller",
-      "name": "Riptide Stormcaller",
+      "name": "Grudge, the Grudgetide",
       "affinity": "Tide",
       "role": "Stormcaller",
       "rarity": 3,
@@ -295,7 +295,7 @@
     {
       "id": "chr_dawnrider_i",
       "lineId": "line_dawnrider",
-      "name": "Dawnrider",
+      "name": "Spur, the Dawnrider",
       "affinity": "Radiant",
       "role": "Herald",
       "rarity": 3,
@@ -315,7 +315,7 @@
     {
       "id": "chr_dawnrider_ii",
       "lineId": "line_dawnrider",
-      "name": "Dawnrider Exalted",
+      "name": "Spur, Dawnrider Exalted",
       "affinity": "Radiant",
       "role": "Herald",
       "rarity": 4,
@@ -337,7 +337,7 @@
     {
       "id": "chr_ashfield_reaver_i",
       "lineId": "line_ashfield_reaver",
-      "name": "Ashfield Reaver",
+      "name": "Tatters, the Ashfield Reaver",
       "affinity": "Neutral",
       "role": "Reaver",
       "rarity": 3,
@@ -357,7 +357,7 @@
     {
       "id": "chr_hollow_warder_i",
       "lineId": "line_hollow_warder",
-      "name": "Hollow Warder",
+      "name": "Nil, the Empty Helm",
       "affinity": "Neutral",
       "role": "Warder",
       "rarity": 3,
@@ -377,7 +377,7 @@
     {
       "id": "chr_shackleborn_i",
       "lineId": "line_shackleborn",
-      "name": "Shackleborn",
+      "name": "Fetter, the Breathbinder",
       "affinity": "Neutral",
       "role": "Controller",
       "rarity": 4,
